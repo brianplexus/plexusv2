@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plexus Call Manager v1.9</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; color: #1e293b; }
+        .sidebar-link { transition: all 0.2s ease; border-left: 4px solid transparent; cursor: pointer; }
+        .active-link { background-color: #f5f3ff; color: #6d28d9; border-left-color: #6d28d9; font-weight: 900; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .table-viewport { height: calc(100vh - 300px); overflow-y: auto; scrollbar-width: thin; }
+        .table-viewport::-webkit-scrollbar { width: 4px; }
+        .table-viewport::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        .badge { display: inline-flex; align-items: center; padding: 0.25rem 0.625rem; border-radius: 0.5rem; border: 1px solid transparent; font-size: 10px; font-weight: 900; text-transform: uppercase; }
+        .badge-brainview { background-color: #eef2ff !important; color: #4338ca !important; border-color: #c7d2fe !important; }
+        .badge-reco { background-color: #f8fafc !important; color: #64748b !important; border-color: #e2e8f0 !important; }
+        .badge-purple { background: #f5f3ff; color: #6d28d9; }
+        .badge-green { background: #f0fdf4; color: #166534; }
+        .badge-red { background: #fef2f2; color: #b91c1c; }
+        
+        .report-card { background: white; padding: 1.5rem; border-radius: 1.5rem; border: 1px solid #e2e8f0; transition: all 0.3s ease; }
+        .report-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05); }
+        .report-label { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 0.5rem; display: block; }
+        .report-value { font-size: 2.5rem; font-weight: 900; color: #1e293b; letter-spacing: -0.05em; }
+        
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); z-index: 500; display: none; align-items: center; justify-content: center; }
+        .modal-content { background: white; border-radius: 2.5rem; width: 1400px; max-width: 98%; max-height: 98vh; overflow-y: auto; padding: 3rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        @keyframes modalPop { from { transform: scale(0.9) translateY(20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+        
+        .form-input, .form-select, .form-textarea { width: 100%; background-color: #f8fafc; border: 2px solid #e2e8f0; border-radius: 1rem; padding: 1rem 1.25rem; font-size: 0.875rem; font-weight: 600; outline: none; transition: all 0.2s; }
+        .form-select:focus, .form-input:focus { border-color: #6d28d9; background-color: #ffffff; box-shadow: 0 10px 15px -3px rgba(109, 40, 217, 0.1); }
+
+        .schedule-grid-table { min-width: 1800px; border-collapse: collapse; }
+        .schedule-grid-table td { padding: 0.75rem; border-bottom: 1px solid #f1f5f9; font-size: 11px; font-weight: 600; vertical-align: middle; }
+        .schedule-grid-table th { padding: 1.25rem 0.75rem; background: #f8fafc; text-transform: uppercase; font-size: 9px; font-weight: 900; color: #94a3b8; text-align: left; position: sticky; top: 0; z-index: 20; }
+        
+        .outcome-card { cursor: pointer; padding: 1.5rem; border-radius: 1.25rem; border: 2px solid #f1f5f9; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; text-align: center; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+        .outcome-card.active { border-color: #7e22ce; background-color: #f5f3ff; color: #6d28d9; }
+        .outcome-card:hover { border-color: #e2e8f0; transform: translateY(-2px); }
+
+        .btn-premium { background: linear-gradient(135deg, #7e22ce 0%, #6d28d9 100%); color: white; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; transition: all 0.3s; box-shadow: 0 10px 20px rgba(126,34,206,0.2); }
+        .procedure-row { padding: 1.25rem; border-radius: 1.25rem; border: 1px solid #f1f5f9; margin-bottom: 0.75rem; background: #ffffff; transition: all 0.3s ease; }
+        .procedure-row.selected { background: #f5f3ff; border-color: #ddd6fe; }
+
+        .custom-checkbox { width: 24px; height: 24px; border: 2px solid #e2e8f0; border-radius: 8px; appearance: none; cursor: pointer; position: relative; transition: all 0.2s; background: white; }
+        .custom-checkbox:checked { background: #6d28d9; border-color: #6d28d9; }
+        .custom-checkbox:checked::after { content: '\f00c'; font-family: 'Font Awesome 6 Free'; font-weight: 900; color: white; font-size: 12px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+
+        .draft-sidebar { width: 0; transition: width 0.3s ease; overflow: hidden; background: white; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; }
+        .draft-sidebar.open { width: 320px; }
+        .draft-item { padding: 1rem; margin-bottom: 0.5rem; background: #f8fafc; border-radius: 0.75rem; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; }
+        .draft-item:hover { background: #f1f5f9; border-color: #cbd5e1; }
+        .draft-item.active { background: #f5f3ff; border-color: #7c3aed; }
+
+        .pagination-btn-new {
+            width: 40px; height: 40px; border-radius: 12px; background: white; border: 1px solid #e2e8f0;
+            color: #64748b; transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+            font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .pagination-btn-new:hover:not(:disabled) { background: #f5f3ff; color: #6d28d9; border-color: #d8b4fe; transform: translateY(-1px); }
+        .pagination-btn-new:disabled { opacity: 0.5; cursor: not-allowed; background: #f8fafc; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <div id="msgDialog" class="modal-overlay" style="z-index: 2000;">
+        <div class="modal-content !max-w-md text-center">
+            <div id="msgIcon" class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 bg-purple-100 text-purple-700">
+                <i class="fas fa-info-circle text-2xl"></i>
+            </div>
+            <h3 id="msgTitle" class="text-xl font-black mb-4">Notification</h3>
+            <div id="msgBody" class="text-slate-500 mb-8 text-sm font-medium"></div>
+            <div id="msgFooter" class="space-y-2">
+                <button onclick="closeMsg()" class="w-full bg-purple-700 text-white py-4 rounded-2xl font-black text-xs uppercase">Acknowledge</button>
+            </div>
+        </div>
+    </div>
+
+    <aside class="w-80 bg-white border-r flex flex-col shadow-2xl z-20">
+        <div class="p-10 text-center"><h1 class="text-4xl font-black text-purple-700 tracking-tighter flex items-center justify-center"><i class="fas fa-heartbeat mr-3 text-purple-600"></i>PLEXUS</h1></div>
+        <nav class="flex-1 px-6 space-y-2 overflow-y-auto">
+            <button onclick="switchView('dashboard')" id="nav-dashboard" class="sidebar-link active-link w-full flex items-center p-4 rounded-xl text-slate-500"><i class="fas fa-th-large mr-4 text-lg"></i> Dashboard</button>
+            <button onclick="switchView('workspace')" id="nav-workspace" class="sidebar-link w-full flex items-center p-4 rounded-xl text-slate-500 hidden"><i class="fas fa-laptop-medical mr-4 text-lg"></i> Active Workspace</button>
+            <button onclick="switchView('create-schedule')" id="nav-create-schedule" class="sidebar-link w-full flex items-center p-4 rounded-xl text-slate-500"><i class="fas fa-calendar-plus mr-4 text-lg"></i> Create Schedule</button>
+            
+            <button onclick="switchView('appointments')" id="nav-appointments" class="sidebar-link w-full flex items-center p-4 rounded-xl text-slate-500"><i class="fas fa-book-medical mr-4 text-lg"></i> Appointments Book</button>
+            
+            <button onclick="switchView('call-list')" id="nav-call-list" class="sidebar-link w-full flex items-center p-4 rounded-xl text-slate-500"><i class="fas fa-phone-alt mr-4 text-lg"></i> Master Pool</button>
+            <button onclick="switchView('upload')" id="nav-upload" class="sidebar-link w-full flex items-center p-4 rounded-xl text-slate-500"><i class="fas fa-cloud-upload-alt mr-4 text-lg"></i> Data Center</button>
+            <div id="admin-menu-section" class="hidden pt-6 mt-6 border-t space-y-2"><button onclick="switchView('admin-panel')" id="nav-admin-panel" class="sidebar-link w-full flex items-center p-4 rounded-xl text-slate-500"><i class="fas fa-chart-line mr-4 text-lg"></i> Analytics & Team</button></div>
+        </nav>
+        <div class="p-8 border-t"><button onclick="openAdminLogin()" id="admin-login-btn" class="w-full flex items-center justify-between text-[11px] font-black uppercase text-slate-400 hover:text-purple-600 transition"><span>Admin Access</span> <i class="fas fa-chevron-right text-[8px]"></i></button></div>
+    </aside>
+
+    <main class="flex-1 flex flex-col relative bg-slate-50 overflow-hidden">
+        <header class="h-24 bg-white border-b flex items-center justify-between px-12 shadow-sm z-10">
+            <input type="text" onkeyup="handleSearch(this.value)" id="globalSearchInput" placeholder="OmniSearch (Name, Chart, Procedure, Location...)" class="w-[450px] px-6 py-4 bg-slate-50 border rounded-2xl text-sm font-semibold outline-none focus:bg-white transition-all shadow-sm">
+            <div class="flex items-center gap-6">
+                <div id="sessionStatus" class="hidden flex items-center gap-2 bg-purple-50 px-4 py-2 rounded-full border border-purple-100 shadow-sm">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="text-[10px] font-black text-purple-700 uppercase tracking-widest">Current Session: <span id="activeStaffName"></span></span>
+                </div>
+                <div class="text-[10px] font-black bg-slate-100 text-slate-500 px-4 py-2 rounded-full border tracking-widest uppercase">v1.9</div>
+            </div>
+        </header>
+
+        <div id="view-dashboard" class="flex-1 p-12 overflow-y-auto fade-in">
+            <div class="grid grid-cols-3 gap-10 mb-12">
+                <div class="report-card text-center shadow-sm"><p class="report-label">Patients</p><h2 id="stat-total" class="report-value">0</h2></div>
+                <div class="report-card text-center shadow-sm"><p class="report-label">Call Queue</p><h2 id="stat-pending" class="report-value text-purple-700">0</h2></div>
+                <div class="report-card text-center shadow-sm"><p class="report-label">Scheduled Rate</p><h2 id="stat-success" class="report-value">0%</h2></div>
+            </div>
+            <div class="bg-white p-16 rounded-[60px] shadow-sm border text-center max-w-4xl mx-auto mt-10">
+                <div class="w-24 h-24 bg-purple-50 text-purple-600 rounded-[35px] flex items-center justify-center mx-auto mb-10 shadow-inner rotate-3"><i class="fas fa-play text-3xl"></i></div>
+                <h2 class="text-4xl font-black mb-10 text-slate-800 tracking-tight">Generate Call Queue</h2>
+                <div id="dashboardSessionLabel" class="hidden mb-10 p-5 bg-purple-50 rounded-3xl inline-block px-12 border border-purple-100 shadow-inner">
+                    <p class="text-xs font-black text-purple-700 uppercase tracking-[0.2em]">Current Session: <span id="dashStaffName" class="text-slate-800"></span></p>
+                </div>
+                <p id="dashboardSubtext" class="text-slate-400 text-lg italic max-w-2xl mx-auto mb-10">Start by generating a call list from the pool or claiming high-priority leads</p>
+                <div id="dashboardActions" class="space-y-4 max-w-xs mx-auto"></div>
+            </div>
+        </div>
+
+        <div id="view-create-schedule" class="hidden flex-1 flex h-full fade-in overflow-hidden">
+            <div id="draftsSidebar" class="draft-sidebar">
+                <div class="p-6 border-b flex justify-between items-center bg-slate-50">
+                    <h3 class="font-black text-slate-700 uppercase tracking-tighter">Draft Library</h3>
+                    <button onclick="toggleDrafts()" class="text-slate-400 hover:text-red-500"><i class="fas fa-times"></i></button>
+                </div>
+                <div id="draftsList" class="p-4 overflow-y-auto flex-1 space-y-2"></div>
+            </div>
+            <div class="flex-1 flex flex-col p-12 overflow-hidden relative">
+                <div class="flex justify-between items-end mb-8 shrink-0">
+                    <div class="flex gap-4 items-end">
+                        <button onclick="toggleDrafts()" class="h-[58px] w-[58px] rounded-2xl border-2 border-slate-200 text-slate-400 hover:border-purple-400 hover:text-purple-600 transition flex items-center justify-center bg-white"><i class="fas fa-folder-open text-xl"></i></button>
+                        <div class="w-64"><label class="report-label">Location</label><select id="scheduleLocation" class="form-select"></select></div>
+                        <div class="w-64"><label class="report-label">Physician</label><select id="schedulePhysician" class="form-select"></select></div>
+                        <div class="w-48"><label class="report-label">Schedule Date</label><input type="date" id="scheduleDate" class="form-input"></div>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="document.getElementById('schedCSV').click()" class="bg-slate-900 text-white px-8 py-4 rounded-2xl text-xs font-black uppercase flex items-center gap-2 shadow-xl hover:bg-black transition"><i class="fas fa-file-csv"></i> Upload CSV</button>
+                        <button onclick="clearScheduleGrid()" class="bg-red-50 text-red-600 px-6 py-4 rounded-2xl text-xs font-black uppercase"><i class="fas fa-trash"></i></button>
+                    </div>
+                    <input type="file" id="schedCSV" class="hidden" onchange="processScheduleCSV(this)">
+                </div>
+                <div class="bg-white border rounded-[40px] flex-1 overflow-hidden flex flex-col shadow-sm">
+                    <div class="overflow-auto flex-1">
+                        <table class="schedule-grid-table">
+                            <thead>
+                                <tr class="bg-slate-50 border-b">
+                                    <th>Time</th><th>Patient Details</th><th>Age</th><th>Sex</th><th>Dx/Hx/Rx</th><th>Qualifying</th><th>Recommended</th><th>Clinical History</th><th>Payer</th><th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="schedule-grid-body"></tbody>
+                        </table>
+                    </div>
+                    <div class="p-6 bg-slate-50 border-t flex justify-between shrink-0 items-center">
+                        <div class="text-[10px] font-black uppercase text-slate-400 tracking-widest" id="draftStatusText">New Schedule</div>
+                        <div class="flex gap-3">
+                            <button onclick="downloadCSV()" class="bg-white border border-slate-200 text-slate-600 px-8 py-4 rounded-2xl text-xs font-black uppercase shadow-sm hover:bg-slate-50 transition"><i class="fas fa-download mr-2"></i> Export CSV</button>
+                            <button id="saveDraftBtn" onclick="saveDraft()" class="bg-blue-50 text-blue-600 px-8 py-4 rounded-2xl text-xs font-black uppercase shadow-sm hover:bg-blue-100 transition">Save Draft</button>
+                            <button id="finalizeBatchBtn" onclick="finalizeScheduleBatch()" class="btn-premium px-12 py-4 rounded-2xl text-xs uppercase shadow-xl transition-all">Finalize to Pool</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-appointments" class="hidden flex-1 p-12 flex flex-col fade-in overflow-hidden">
+            <div class="flex justify-between items-end mb-10">
+                <div><h3 class="text-4xl font-black text-slate-800 tracking-tight uppercase">Appointments Book</h3><p class="text-[10px] font-black text-slate-400 uppercase mt-1">Manage scheduled procedures and close the loop</p></div>
+                <button onclick="fetchAppointments()" class="p-4 bg-slate-200 text-slate-500 rounded-xl hover:bg-slate-300 transition"><i class="fas fa-sync"></i> Refresh Calendar</button>
+            </div>
+            <div class="bg-white rounded-[45px] border flex-1 overflow-hidden flex flex-col shadow-sm">
+                <div class="table-viewport flex-1 overflow-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50 border-b font-black text-slate-400 uppercase sticky top-0 z-10">
+                            <tr><th class="p-6">Date & Time</th><th class="p-6">Patient</th><th class="p-6">Procedure</th><th class="p-6">Location</th><th class="p-6 text-right">Actions</th></tr>
+                        </thead>
+                        <tbody id="appointments-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-call-list" class="hidden flex-1 p-12 flex flex-col fade-in overflow-hidden">
+            <div class="flex justify-between items-end mb-10">
+                <div><h3 class="text-4xl font-black text-slate-800 tracking-tight uppercase">Master Pool</h3><p class="text-[10px] font-black text-slate-400 uppercase mt-1">Neutral Pool - View Details or Claim to start interaction</p></div>
+                <div class="flex gap-3">
+                    <select id="poolLimit" onchange="fetchCalls(1, false)" class="form-select !w-32 !text-xs !py-3">
+                        <option value="10">Show 10</option>
+                        <option value="25">Show 25</option>
+                        <option value="50">Show 50</option>
+                        <option value="100">Show 100</option>
+                    </select>
+                    <button onclick="syncIdentities(this)" class="p-4 bg-purple-50 text-purple-600 rounded-xl hover:bg-purple-100 transition text-xs font-black uppercase"><i class="fas fa-id-card-clip"></i> Sync Identities</button>
+                    <button onclick="fetchCalls(1, false)" class="p-4 bg-slate-200 text-slate-500 rounded-xl hover:bg-slate-300 transition"><i class="fas fa-sync"></i> Sync Pool</button>
+                </div>
+            </div>
+            <div class="bg-white rounded-[45px] border flex-1 overflow-hidden flex flex-col shadow-sm">
+                <div class="table-viewport flex-1" id="call-list-table"></div>
+                <div class="p-6 bg-slate-50 border-t flex justify-between items-center" id="masterPagination"></div>
+            </div>
+        </div>
+
+        <div id="view-workspace" class="hidden flex-1 p-12 flex flex-col fade-in overflow-hidden">
+            <div class="flex justify-between items-end mb-10"><div><h3 class="text-4xl font-black text-slate-800 tracking-tight">Active Workspace</h3><p class="text-[10px] font-black text-purple-600 uppercase tracking-widest mt-1" id="sessionProgressBadge">0 / 0 Handled</p></div><button onclick="clearActiveSession()" class="px-8 py-4 bg-slate-200 text-slate-500 rounded-2xl text-xs font-black uppercase hover:bg-slate-300 transition">Close Session</button></div>
+            <div class="bg-white rounded-[45px] border flex-1 overflow-hidden shadow-sm flex flex-col"><div class="table-viewport flex-1" id="workspace-table"></div></div>
+        </div>
+
+        <div id="view-admin-panel" class="hidden flex-1 p-12 fade-in overflow-y-auto">
+            <div class="flex justify-between items-center mb-8"><h3 class="text-4xl font-black text-slate-800 tracking-tight uppercase">Team Analytics</h3>
+                <div class="flex gap-4 items-center">
+                    <select id="filterTeamMember" onchange="triggerAdminSync()" class="form-select border rounded-xl p-2 text-xs font-bold w-48"><option value="">All Team Members</option></select>
+                    <div class="flex items-center gap-2 bg-white border rounded-xl px-3 py-1">
+                        <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest">From</label>
+                        <input type="date" id="filterStartDate" onchange="triggerAdminSync()" class="border-none outline-none text-xs font-bold text-slate-700 bg-transparent cursor-pointer">
+                        <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-2">To</label>
+                        <input type="date" id="filterEndDate" onchange="triggerAdminSync()" class="border-none outline-none text-xs font-bold text-slate-700 bg-transparent cursor-pointer">
+                    </div>
+                    <button onclick="triggerAdminSync()" id="adminSyncBtn" class="btn-premium px-6 py-3 rounded-xl flex items-center gap-2"><i id="syncIcon" class="fas fa-sync-alt"></i> <span id="syncText">Sync</span></button>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-4 gap-6 mb-8 text-center text-xs">
+                <div class="report-card shadow-sm"><span class="report-label">Scheduled Rate</span><div class="report-value" id="admin-scheduled-rate">0%</div></div>
+                <div class="report-card shadow-sm"><span class="report-label">Avg Interaction</span><div class="report-value" id="admin-avg-duration">0:00</div></div>
+                <div class="report-card shadow-sm"><span class="report-label">Total Outreaches</span><div class="report-value" id="admin-total-calls">0</div></div>
+                <div class="report-card shadow-sm"><span class="report-label">Total Hours</span><div class="report-value" id="admin-total-hours">0.0</div></div>
+            </div>
+
+            <div class="bg-white rounded-[45px] shadow-sm border overflow-hidden mb-12 flex flex-col shadow-lg">
+                <div class="p-8 border-b flex justify-between items-center bg-purple-50">
+                    <div>
+                        <h4 class="font-black text-lg uppercase text-purple-800">Live Agent Monitor</h4>
+                        <p class="text-[10px] font-bold text-purple-600 uppercase tracking-widest mt-1">Mirror active workspaces across the floor</p>
+                    </div>
+                    <button onclick="fetchAdminWorkspaces()" class="px-6 py-3 bg-white text-purple-700 rounded-xl text-xs font-black uppercase shadow-sm hover:bg-purple-100 transition"><i class="fas fa-sync mr-2"></i> Refresh Desks</button>
+                </div>
+                <div id="admin-workspaces-container" class="p-8 grid grid-cols-2 gap-8 max-h-[600px] overflow-y-auto bg-slate-50">
+                    </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-10 mb-12 h-[400px]">
+                <div class="bg-white p-8 rounded-[40px] shadow-sm border flex flex-col"><h4 class="font-black text-lg mb-4 text-slate-700 uppercase tracking-tighter">Outcome Distribution</h4><div class="flex-1"><canvas id="outcomeChart"></canvas></div></div>
+                <div class="bg-white p-8 rounded-[40px] shadow-sm border flex flex-col"><h4 class="font-black text-lg mb-4 text-slate-700 uppercase tracking-tighter">Team Contribution</h4><div class="flex-1"><canvas id="staffChart"></canvas></div></div>
+            </div>
+
+            <div class="bg-white rounded-[45px] shadow-sm border overflow-hidden mb-12 flex flex-col shadow-lg">
+                <div class="p-8 border-b flex justify-between items-center">
+                    <h4 class="font-black text-lg uppercase text-slate-700">Interaction History</h4>
+                    <div class="flex gap-4">
+                        <input type="text" id="logSearch" placeholder="Search logs..." onkeyup="if(event.key==='Enter') triggerAdminSync()" class="form-input !py-2 !text-xs !w-64">
+                        <select id="logLimit" onchange="triggerAdminSync()" class="form-select !w-32 !text-xs !py-2">
+                            <option value="10">Show 10</option>
+                            <option value="25">Show 25</option>
+                            <option value="50">Show 50</option>
+                            <option value="100">Show 100</option>
+                        </select>
+                        <button onclick="exportAdminLogs(event)" class="bg-slate-900 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 hover:bg-black transition"><i class="fas fa-file-csv"></i> Export CSV</button>
+                    </div>
+                </div>
+                <div class="max-h-[500px] overflow-y-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50 border-b font-black text-slate-400 uppercase sticky top-0">
+                            <tr><th class="p-6">Date / Time</th><th class="p-6">Member</th><th class="p-6">Patient</th><th class="p-6">Outcome</th><th class="p-6 text-right">Duration</th></tr>
+                        </thead>
+                        <tbody id="admin-log-table"></tbody>
+                    </table>
+                </div>
+                <div class="p-6 bg-slate-50 border-t flex justify-between items-center" id="adminLogPagination"></div>
+            </div>
+
+             <div class="grid grid-cols-12 gap-8 mb-20">
+                 <div class="col-span-4 bg-white p-10 rounded-[45px] border shadow-sm h-fit">
+                    <h4 class="font-black text-lg uppercase mb-8 text-slate-700">Team Management</h4>
+                    <div class="space-y-4 mb-10"><input type="text" id="newStaffName" class="form-input text-xs" placeholder="Staff Name"><input type="text" id="newStaffExt" class="form-input text-xs" placeholder="Extension"><button onclick="saveStaff()" class="w-full btn-premium py-4 rounded-2xl text-[10px]">Add Member</button></div>
+                    <div id="staffListDisplay" class="space-y-2"></div>
+                 </div>
+                 <div class="col-span-8 grid grid-cols-2 gap-8">
+                    <div class="bg-white p-8 rounded-[40px] border shadow-sm"><h4 class="report-label">Outreach Locations</h4><div class="flex gap-2 mb-4"><input type="text" id="newLocInput" class="form-input !py-3 text-xs"><button onclick="addConfigItem('locations')" class="bg-slate-900 text-white w-12 rounded-xl"><i class="fas fa-plus"></i></button></div><div id="admin-loc-list" class="space-y-1"></div></div>
+                    <div class="bg-white p-8 rounded-[40px] border shadow-sm"><h4 class="report-label">Physicians</h4><div class="flex gap-2 mb-4"><input type="text" id="newPhyInput" class="form-input !py-3 text-xs"><button onclick="addConfigItem('physicians')" class="bg-slate-900 text-white w-12 rounded-xl"><i class="fas fa-plus"></i></button></div><div id="admin-phy-list" class="space-y-1"></div></div>
+                    <div class="bg-white p-8 rounded-[40px] border shadow-sm col-span-2"><h4 class="report-label">Procedure Catalog</h4><div class="flex gap-2 mb-4"><input type="text" id="newProcInput" class="form-input !py-3 text-xs" placeholder="New Procedure..."><button onclick="addConfigItem('procedures')" class="bg-slate-900 text-white w-12 rounded-xl"><i class="fas fa-plus"></i></button></div><div id="admin-proc-list" class="grid grid-cols-2 gap-2"></div></div>
+                    <div class="bg-white p-8 rounded-[40px] border shadow-sm col-span-2">
+                        <h4 class="report-label">Communication Logic</h4>
+                        <div class="mb-6"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1 tracking-widest">Central Gmail (Outreach)</label><input type="text" id="centralGmailInput" class="form-input !py-3 text-xs" placeholder="clinic.outreach@gmail.com" onchange="addConfigItem('central_email', this.value)"></div>
+                        <h4 class="report-label">Templates (Label|Content)</h4>
+                        <div class="flex gap-2 mb-4"><input type="text" id="newTemplateInput" class="form-input !py-3 text-xs" placeholder="Welcome|Hi [Patient]..."><button onclick="addConfigItem('sms_templates')" class="bg-slate-900 text-white px-6 rounded-xl font-black text-[10px] uppercase">Add</button></div>
+                        <div id="admin-sms-list" class="space-y-2"></div>
+                    </div>
+                 </div>
+             </div>
+        </div>
+
+        <div id="view-upload" class="hidden flex-1 p-20 flex flex-col items-center justify-center fade-in">
+            <h3 class="text-5xl font-black text-slate-800 mb-16 uppercase tracking-tighter">System Data Center</h3>
+            <div class="grid grid-cols-2 gap-12 w-full max-w-5xl">
+                <div onclick="document.getElementById('emrFile').click()" class="bg-white p-16 rounded-[60px] border-4 border-dashed cursor-pointer text-center hover:border-purple-400 transition shadow-lg"><i class="fas fa-database text-5xl text-purple-600 mb-8"></i><h4 class="font-black uppercase text-lg">EMR Master CSV</h4><input type="file" id="emrFile" class="hidden" onchange="upload('emr')"></div>
+                <div onclick="document.getElementById('masterFile').click()" class="bg-white p-16 rounded-[60px] border-4 border-dashed cursor-pointer text-center hover:border-green-400 transition shadow-lg"><i class="fas fa-file-medical text-5xl text-green-600 mb-8"></i><h4 class="font-black uppercase text-lg">History Copy CSV</h4><input type="file" id="masterFile" class="hidden" onchange="upload('master')"></div>
+            </div>
+            <div id="progressContainer" class="hidden w-full max-w-md mt-12"><div class="h-3 bg-slate-200 rounded-full overflow-hidden"><div id="progBar" class="h-full bg-purple-600 transition-all duration-300"></div></div><p id="progText" class="text-center mt-2 text-[10px] font-black uppercase text-slate-400"></p></div>
+        </div>
+    </main>
+
+    <div id="saveDraftModal" class="modal-overlay" style="z-index: 700;">
+        <div class="modal-content !max-w-md">
+            <h3 class="text-2xl font-black mb-4 uppercase text-slate-800">Save Schedule Draft</h3>
+            <p class="text-slate-400 text-xs font-bold mb-6">Enter a name to easily identify this configuration later.</p>
+            <label class="report-label">Draft Name</label>
+            <input type="text" id="draftNameInput" class="form-input mb-8" placeholder="e.g. Morning Shift - West Wing">
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('saveDraftModal').style.display='none'" class="flex-1 bg-slate-100 py-4 rounded-2xl font-black uppercase text-xs hover:bg-slate-200">Cancel</button>
+                <button onclick="confirmSaveDraft()" class="flex-1 btn-premium py-4 rounded-2xl text-xs uppercase shadow-lg">Save Draft</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="finalizeModal" class="modal-overlay" style="z-index: 700;">
+        <div class="modal-content !max-w-md text-center">
+            <div class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 bg-purple-100 text-purple-700 shadow-sm">
+                <i class="fas fa-check-double text-2xl"></i>
+            </div>
+            <h3 class="text-2xl font-black mb-4 uppercase text-slate-800 tracking-tight">Confirm Upload</h3>
+            <p class="text-slate-400 text-xs font-bold mb-8 leading-relaxed">
+                You are about to finalize this schedule into the Master Pool. <br>
+                Existing patient tasks will be merged/updated.
+            </p>
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('finalizeModal').style.display='none'" class="flex-1 bg-slate-100 py-4 rounded-2xl font-black uppercase text-xs hover:bg-slate-200 transition">Cancel</button>
+                <button onclick="executeFinalize()" class="flex-1 btn-premium py-4 rounded-2xl text-xs uppercase shadow-lg">Yes, Finalize</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="generatorModal" class="modal-overlay">
+        <div class="modal-content !max-w-md text-center relative">
+            <button onclick="closeGenerator()" class="absolute top-8 right-8 text-slate-300 hover:text-red-500 transition-all text-2xl"><i class="fas fa-times"></i></button>
+            <h3 class="text-3xl font-black uppercase text-slate-800 mb-8 tracking-tighter">Queue Allocation</h3>
+            <div class="space-y-6 text-left">
+                <div><label class="report-label">Selecting User</label><select id="genStaff" class="form-input"></select></div>
+                <div><label class="report-label">Generation Mode</label><select id="genType" class="form-input"><option value="random">Random Neutral Pool</option><option value="dos_10">10 Days DOS Priority</option></select></div>
+                <div><label class="report-label">Batch Size</label><select id="genLimit" class="form-input"><option value="10">10 Leads</option><option value="25" selected>25 Leads</option><option value="50">50 Leads</option></select></div>
+                <button onclick="runGeneration()" class="w-full btn-premium py-6 rounded-3xl mt-6 uppercase shadow-xl transition">Generate Call Queue</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-login-overlay" class="modal-overlay" style="z-index: 600;">
+        <div class="bg-white p-12 rounded-[50px] shadow-2xl w-full max-w-md text-center">
+            <div class="w-20 h-20 bg-purple-100 text-purple-700 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner"><i class="fas fa-user-shield text-3xl"></i></div>
+            <h2 class="text-2xl font-black mb-6 uppercase tracking-tighter">Admin Verification</h2>
+            <input type="password" id="admin-pass-input" onkeydown="if(event.key==='Enter') handleAdminAuth()" class="form-input text-center mb-6 tracking-widest text-xl shadow-inner border-none" placeholder="••••••••">
+            <div class="flex gap-2">
+                <button onclick="closeAdminLogin()" class="flex-1 bg-slate-100 py-4 rounded-2xl font-black text-xs uppercase hover:bg-slate-200 transition">Cancel</button>
+                <button onclick="handleAdminAuth()" class="flex-1 bg-purple-700 text-white py-4 rounded-2xl font-black text-xs uppercase shadow-lg hover:bg-purple-800 transition">Verify</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="viewModal" class="modal-overlay">
+        <div class="modal-content !max-w-6xl">
+            <div class="flex justify-between items-center mb-10">
+                <div><h3 class="text-4xl font-black text-slate-800 tracking-tighter" id="viewPatientName"></h3><div id="viewPatientBadges" class="flex gap-2 mt-2"></div></div>
+                <button onclick="closeViewModal()" class="text-slate-300 hover:text-red-500 transition text-2xl"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="grid grid-cols-12 gap-10">
+                <div class="col-span-3 space-y-6"><div class="bg-slate-50 p-8 rounded-[40px] border shadow-sm"><h4 class="report-label mb-6">Demographics Profile</h4><div class="space-y-4" id="viewDemoProfile"></div></div></div>
+                <div class="col-span-4 bg-slate-50 p-8 rounded-[40px] border shadow-sm"><h4 class="report-label mb-6">History of Procedures</h4><div id="viewHistoryList" class="space-y-2 max-h-[400px] overflow-y-auto"></div></div>
+                <div class="col-span-5 bg-slate-50 p-8 rounded-[40px] border shadow-sm"><h4 class="report-label mb-6">Interaction Trail</h4><div id="viewTrailList" class="space-y-3 max-h-[400px] overflow-y-auto"></div></div>
+            </div>
+            <div class="mt-10 pt-10 border-t flex justify-end gap-3">
+                <button onclick="closeViewModal()" class="bg-slate-200 px-12 py-5 rounded-2xl font-black uppercase text-xs">Dismiss Overview</button>
+                <button id="viewClaimBtn" class="btn-premium px-12 py-5 rounded-2xl text-xs">Claim Lead (Additive)</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="callDialog" class="modal-overlay">
+        <div class="modal-content !max-w-6xl">
+            <div class="flex justify-between items-start mb-8">
+                <div>
+                    <h3 id="callPatientName" class="text-4xl font-black text-slate-800 tracking-tighter"></h3>
+                    <div class="flex items-center gap-4 mt-2">
+                        <span id="callPhoneBadge" class="badge badge-purple"></span>
+                        <span id="strikeBadge" class="badge badge-red"></span>
+                        <div id="callTimer" class="text-[10px] font-black text-slate-400 uppercase bg-slate-100 px-4 py-1 rounded-full">Interaction Ready</div>
+                    </div>
+                </div>
+                <button onclick="closeCallDialog()" class="text-slate-300 hover:text-red-500 text-2xl"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="grid grid-cols-12 gap-10">
+                <div class="col-span-4 space-y-6">
+                    <div class="p-8 bg-slate-50 rounded-[40px] border shadow-sm">
+                        <h4 class="report-label mb-4">Multi-Channel Engagement</h4>
+                        <div class="space-y-3">
+                            <button id="callBtn" onclick="toggleCall()" class="w-full bg-green-600 text-white py-5 rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-3 shadow-md hover:bg-green-700 transition">
+                                <i class="fas fa-phone-alt"></i> <span>Call via Ring Central</span>
+                            </button>
+                            <button onclick="openSmsModal()" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-3 shadow-md hover:bg-blue-700 transition"><i class="fas fa-comment-dots"></i> Send SMS</button>
+                            <button onclick="openEmailModal()" class="w-full bg-red-600 text-white py-5 rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-3 shadow-md hover:bg-red-700 transition"><i class="fas fa-envelope"></i> Send Email</button>
+                        </div>
+                    </div>
+                    <div class="p-8 bg-white border rounded-[40px] h-[300px] overflow-hidden flex flex-col shadow-sm"><h4 class="report-label mb-4">Medical Record History</h4><div id="engHistory" class="flex-1 overflow-y-auto space-y-1 text-[10px] font-bold text-slate-500"></div></div>
+                </div>
+                <div class="col-span-5 bg-slate-50 p-10 rounded-[45px] border flex flex-col h-[600px] shadow-inner overflow-hidden">
+                    <div class="flex-1 overflow-y-auto">
+                        <h4 class="report-label mb-6">Resolve Patient Tasks</h4>
+                        <div id="procSelection" class="space-y-3"></div>
+                    </div>
+                    <div class="mt-8 pt-8 border-t flex flex-col">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="report-label !mb-0 text-purple-600">Patient Interaction History</h4>
+                            <div id="engHistoryPagination" class="flex gap-1"></div>
+                        </div>
+                        <div id="engTrail" class="space-y-2 max-h-48 overflow-y-auto"></div>
+                    </div>
+                </div>
+                <div class="col-span-3 space-y-6">
+                    <h4 class="report-label">Set Global Outcome</h4>
+                    <div class="grid grid-cols-3 gap-2" id="outcomeGrid">
+                        <div onclick="setOutcome('Scheduled')" class="outcome-card" id="out-Scheduled"><i class="fas fa-calendar-check text-lg"></i><span>Schedule</span></div>
+                        <div onclick="setOutcome('Declined')" class="outcome-card" id="out-Declined"><i class="fas fa-ban text-lg"></i><span>Decline</span></div>
+                        <div onclick="setOutcome('Spanish Handoff')" class="outcome-card" id="out-SpanishHandoff"><i class="fas fa-globe text-lg"></i><span>ES Handoff</span></div>
+                        
+                        <div onclick="setOutcome('Callback')" class="outcome-card" id="out-Callback"><i class="fas fa-phone-volume text-lg"></i><span>Callback</span></div>
+                        <div onclick="setOutcome('Skip')" class="outcome-card" id="out-Skip"><i class="fas fa-forward text-lg"></i><span>Skip (7d)</span></div>
+                        <div onclick="setOutcome('DNC')" class="outcome-card" id="out-DNC"><i class="fas fa-user-slash text-lg"></i><span>DNC/Stop</span></div>
+                        
+                        <div onclick="setOutcome('Left VM')" class="outcome-card" id="out-LeftVM"><i class="fas fa-voicemail text-lg"></i><span>Left VM</span></div>
+                        <div onclick="setOutcome('No Answer')" class="outcome-card" id="out-NoAnswer"><i class="fas fa-phone-slash text-lg"></i><span>No Answer</span></div>
+                        <div onclick="setOutcome('Wrong Number')" class="outcome-card" id="out-WrongNumber"><i class="fas fa-times-circle text-lg"></i><span>Wrong #</span></div>
+                    </div>
+                    <textarea id="engNotes" class="form-textarea h-40 text-xs mt-4" placeholder="Outcome notes"></textarea>
+                </div>
+            </div>
+            <button onclick="submitEngagement()" id="submitEngBtn" class="w-full mt-10 btn-premium py-6 rounded-3xl opacity-30 shadow-2xl transition" disabled>Commit Interaction Result</button>
+        </div>
+    </div>
+
+    <div id="smsModal" class="modal-overlay" style="z-index: 600;">
+        <div class="modal-content !max-w-xl shadow-2xl">
+            <h3 class="text-2xl font-black mb-6 uppercase">Send SMS</h3>
+            <label class="report-label mb-2">Apply Preset Template</label><select id="smsTemplateSelect" onchange="applyTemplate('sms', this.value)" class="form-select mb-4"></select>
+            <label class="report-label mb-2">Editable Message Body</label><textarea id="smsBody" class="form-textarea h-48 mb-6"></textarea>
+            <div class="flex gap-2"><button onclick="document.getElementById('smsModal').style.display='none'" class="flex-1 bg-slate-100 py-4 rounded-2xl font-black uppercase text-xs hover:bg-slate-200">Cancel</button><button onclick="confirmSms()" class="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-xs shadow-lg hover:bg-blue-700">Send via RC API</button></div>
+        </div>
+    </div>
+
+    <div id="emailModal" class="modal-overlay" style="z-index: 600;">
+        <div class="modal-content !max-w-xl shadow-2xl">
+            <h3 class="text-2xl font-black mb-6 uppercase">Send Email</h3>
+            <label class="report-label mb-2">Apply Preset Template</label><select id="emailTemplateSelect" onchange="applyTemplate('email', this.value)" class="form-select mb-4"></select>
+            <label class="report-label mb-2">Subject Header</label><input type="text" id="emailSubject" class="form-input mb-4" placeholder="Clinic Outreach Message">
+            <label class="report-label mb-2">Email Body Content</label><textarea id="emailBody" class="form-textarea h-48 mb-6"></textarea>
+            <div class="flex gap-2"><button onclick="document.getElementById('emailModal').style.display='none'" class="flex-1 bg-slate-100 py-4 rounded-2xl font-black uppercase text-xs hover:bg-slate-200">Cancel</button><button onclick="confirmEmail()" class="flex-1 bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-xs shadow-lg hover:bg-red-700">Send Outreach Email</button></div>
+        </div>
+    </div>
+
+    <script>
+        const API = "/api";
+        let state = { 
+            staff: [], config: {}, activeTasks: [], currentPage: 1, lastSearch: "", 
+            selectedOutcome: null, activePatient: null, resolvedProcedures: [], charts: {},
+            modalHistoryPage: 1, modalHistoryTotal: 1,
+            adminLogPage: 1, adminLogTotalPages: 1,
+            currentDraftId: null, currentDraftName: null
+        };
+        let callTimer = null, callSeconds = 0, isAdmin = false, isCallActive = false;
+
+        window.onload = async () => { await loadConfig(); await loadStaff(); stats(); updateDashboardUI(); };
+
+        const getSession = () => JSON.parse(localStorage.getItem('plexus_session'));
+        const showMsg = (t, b) => { 
+            const title = document.getElementById('msgTitle');
+            const body = document.getElementById('msgBody');
+            const dialog = document.getElementById('msgDialog');
+            if (title && body && dialog) {
+                title.innerText = t; 
+                body.innerText = b; 
+                dialog.style.display = 'flex'; 
+            }
+        };
+
+        const closeMsg = () => {
+            const dialog = document.getElementById('msgDialog');
+            if(dialog) {
+                dialog.style.display = 'none';
+                const footer = document.getElementById('msgFooter');
+                if(footer) footer.innerHTML = '<button onclick="closeMsg()" class="w-full bg-purple-700 text-white py-4 rounded-2xl font-black text-xs uppercase">Acknowledge</button>';
+            }
+        }
+
+        function calculateAge(dobString) {
+            if (!dobString) return null;
+            const birthday = new Date(dobString);
+            if (isNaN(birthday.getTime())) return null;
+            const ageDifMs = Date.now() - birthday.getTime();
+            const ageDate = new Date(ageDifMs); 
+            return Math.abs(ageDate.getUTCFullYear() - 1970);
+        }
+
+        async function loadConfig() {
+            const r = await fetch(`${API}/config`); state.config = await r.json();
+            const mapDrop = (arr, id) => { const el = document.getElementById(id); if(el) el.innerHTML = (arr||[]).map(v => `<option value="${v}">${v}</option>`).join(''); };
+            mapDrop(state.config.locations, 'scheduleLocation'); mapDrop(state.config.physicians, 'schedulePhysician');
+            if(document.getElementById('smsTemplateSelect')) document.getElementById('smsTemplateSelect').innerHTML = '<option value="">Manual Composition...</option>' + (state.config.sms_templates||[]).map(v => `<option value="${v.split('|')[1]}">${v.split('|')[0]}</option>`).join('');
+            if(document.getElementById('emailTemplateSelect')) document.getElementById('emailTemplateSelect').innerHTML = '<option value="">Manual Composition...</option>' + (state.config.email_templates||[]).map(v => `<option value="${v.split('|')[1]}">${v.split('|')[0]}</option>`).join('');
+            if(state.config.central_email) document.getElementById('centralGmailInput').value = state.config.central_email[0] || '';
+            ['locations', 'physicians', 'procedures', 'sms_templates'].forEach(k => {
+                const el = document.getElementById(`admin-${k.slice(0,3)}-list`);
+                if(el) el.innerHTML = (state.config[k]||[]).map(v => `<div class="flex items-center justify-between p-3 bg-white border rounded-xl text-[10px] font-bold"><span>${v.split('|')[0]}</span><button onclick="removeConfig('${k}','${v}')" class="text-red-400"><i class="fas fa-times"></i></button></div>`).join('');
+            });
+        }
+
+        async function loadStaff() {
+            const r = await fetch(`${API}/staff`); state.staff = await r.json();
+            document.getElementById('genStaff').innerHTML = state.staff.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+            const filterDrop = document.getElementById('filterTeamMember');
+            if(filterDrop) filterDrop.innerHTML = '<option value="">All Team Members</option>' + state.staff.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+            document.getElementById('staffListDisplay').innerHTML = state.staff.map(s => `<div class="p-4 bg-white border rounded-2xl flex justify-between items-center shadow-sm"><div class="font-bold text-xs text-slate-800">${s.name} <span class="text-[9px] text-slate-400 uppercase font-black tracking-widest ml-2">Ext: ${s.extension}</span></div><div class="flex gap-2"><button onclick="verifyRc('${s._id}')" class="text-blue-500 text-[9px] font-black uppercase hover:underline">Verify RC</button><button onclick="deleteStaff('${s._id}')" class="text-red-400"><i class="fas fa-trash"></i></button></div></div>`).join('');
+        }
+
+        async function verifyRc(id) { await fetch(`${API}/staff/${id}/verify-rc`, {method:'POST'}); loadStaff(); showMsg("RC Sync", "App Extension discovered and bridged."); }
+        async function saveStaff() { const n = document.getElementById('newStaffName').value, e = document.getElementById('newStaffExt').value; if(!n||!e) return; await fetch(`${API}/staff`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:n, extension:e})}); loadStaff(); }
+        async function deleteStaff(id) { if(confirm("Permanently remove team member?")) { await fetch(`${API}/staff/${id}`, {method:'DELETE'}); loadStaff(); } }
+        async function removeConfig(k, v) { await fetch(`${API}/config/${k}/${encodeURIComponent(v)}`, {method:'DELETE'}); loadConfig(); }
+        async function addConfigItem(k, v) { 
+            let val;
+            if (v) val = v;
+            else {
+                let id = k === 'locations' ? 'newLocInput' : (k === 'physicians' ? 'newPhyInput' : (k === 'procedures' ? 'newProcInput' : 'newTemplateInput'));
+                val = document.getElementById(id)?.value;
+            }
+            if(!val) return; await fetch(`${API}/config/${k}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({value:val})}); 
+            if(!v) {
+                const clearId = k === 'locations' ? 'newLocInput' : (k === 'physicians' ? 'newPhyInput' : (k === 'procedures' ? 'newProcInput' : 'newTemplateInput'));
+                if(document.getElementById(clearId)) document.getElementById(clearId).value = '';
+            }
+            loadConfig(); 
+        }
+
+        function switchView(v) {
+            document.querySelectorAll('main > div').forEach(d => d.classList.add('hidden'));
+            document.getElementById('view-'+v).classList.remove('hidden');
+            document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active-link'));
+            const nav = document.getElementById('nav-'+v); if(nav) nav.classList.add('active-link');
+            
+            // Context Aware Loading
+            if(v === 'call-list' || v === 'workspace') fetchCalls(1, v === 'workspace');
+            if(v === 'admin-panel') triggerAdminSync();
+            if(v === 'create-schedule') fetchDrafts();
+            if(v === 'appointments') fetchAppointments();
+        }
+
+        function handleSearch(v) { 
+            state.lastSearch = v; 
+            const activeViewId = document.querySelector('main > div:not(.hidden)').id;
+
+            if (activeViewId === 'view-call-list') fetchCalls(1, false);
+            else if (activeViewId === 'view-workspace') fetchCalls(1, true);
+            else if (activeViewId === 'view-admin-panel') triggerAdminSync(1);
+            else if (activeViewId === 'view-appointments') fetchAppointments();
+        }
+
+        function clearScheduleGrid() { 
+            if(confirm("Permanently wipe current grid?")) { 
+                scheduleData = []; 
+                state.currentDraftId = null;
+                state.currentDraftName = null;
+                document.getElementById('saveDraftBtn').innerText = "Save Draft";
+                document.getElementById('draftStatusText').innerText = "New Schedule";
+                renderScheduleGrid(); 
+            } 
+        }
+
+        let scheduleData = [];
+        async function processScheduleCSV(input) {
+            const file = input.files[0]; if(!file) return;
+            const body = document.getElementById('schedule-grid-body');
+            body.innerHTML = '<tr><td colspan="10" class="p-20 text-center"><div class="animate-spin inline-block w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mb-4"></div><div class="font-black text-purple-700 uppercase tracking-widest text-xs">Reading File & Syncing Identity Master...</div></td></tr>';
+            const text = await file.text(); const lines = text.split(/\r?\n/).map(l => l.split(','));
+            let headIdx = -1;
+            for(let i=0; i<lines.length; i++) {
+                const rowStr = lines[i].join('').toLowerCase();
+                if((rowStr.includes('chart') || rowStr.includes('id')) && (rowStr.includes('time') || rowStr.includes('appt'))) { headIdx = i; break; }
+            }
+            if(headIdx === -1) return showMsg("Header Error", "Identity or Time columns not discovered in file.");
+            const keys = lines[headIdx].map(k => k.trim().toLowerCase());
+            const chartIdx = keys.findIndex(k => k.includes('chart') || k.includes('id'));
+            const timeIdx = keys.indexOf('time');
+            scheduleData = [];
+            for (let r of lines.slice(headIdx+1)) {
+                if(!r[chartIdx]) continue;
+                const chart = r[chartIdx].trim().replace(/[^a-zA-Z0-9]/g, '');
+                const p = await (await fetch(`${API}/patients/find?chartNumber=${chart}`)).json();
+                const hRes = await fetch(`${API}/patients/view?chartNumber=${chart}`);
+                const hData = await hRes.json();
+                const historyArr = (hData.history || []).map(h => `${h.procedure} (${new Date(h.dateOfService).toLocaleDateString()})`);
+                const computedAge = calculateAge(p.dob) || p.age || '--';
+                scheduleData.push({ 
+                    time: r[timeIdx]||'09:00 AM', chart, name: p.patientName || 'New Identity Case', 
+                    insurance: p.insurance || 'Private/Self', age: computedAge, sex: p.gender || '--', 
+                    history: historyArr,
+                    dx: '', hx: '', rx: '', qual: [], reco: []
+                });
+            }
+            state.currentDraftId = null;
+            state.currentDraftName = null;
+            document.getElementById('saveDraftBtn').innerText = "Save Draft";
+            document.getElementById('draftStatusText').innerText = "Unsaved Upload";
+            renderScheduleGrid();
+            
+            input.value = '';
+        }
+
+        function renderScheduleGrid() {
+            const body = document.getElementById('schedule-grid-body');
+            body.innerHTML = scheduleData.map((d, i) => `
+                <tr class="border-b hover:bg-slate-50 transition">
+                    <td class="p-6 font-black text-purple-700 uppercase">${d.time}</td>
+                    <td class="p-6 shrink-0"><div class="font-bold text-slate-800">${d.name}</div><div class="text-[10px] text-slate-400 font-black uppercase">#${d.chart}</div></td>
+                    <td class="p-6 text-[10px] font-black">${d.age}</td><td class="p-6 text-[10px] font-black uppercase">${d.sex}</td>
+                    <td class="p-6"><div class="flex gap-2"><input placeholder="Dx" id="dx-${i}" value="${d.dx||''}" class="border rounded p-1 w-12 text-[9px] font-black"><input placeholder="Hx" id="hx-${i}" value="${d.hx||''}" class="border rounded p-1 w-12 text-[9px] font-black"><input placeholder="Rx" id="rx-${i}" value="${d.rx||''}" class="border rounded p-1 w-12 text-[9px] font-black"></div></td>
+                    <td class="p-6"><div class="max-h-24 overflow-auto border p-2 rounded bg-slate-50 text-[9px] font-bold shadow-inner w-40">${state.config.procedures.map(p => `<label class="block"><input type="checkbox" data-idx="${i}" data-type="qual" value="${p}" ${(d.qual||[]).includes(p)?'checked':''}> ${p}</label>`).join('')}</div></td>
+                    <td class="p-6"><div class="max-h-24 overflow-auto border p-2 rounded bg-slate-50 text-[9px] font-bold shadow-inner w-40">${state.config.procedures.map(p => `<label class="block"><input type="checkbox" data-idx="${i}" data-type="reco" value="${p}" ${(d.reco||[]).includes(p)?'checked':''}> ${p}</label>`).join('')}</div></td>
+                    <td class="p-6 w-64"><div class="flex flex-wrap gap-1">${d.history.map(h => `<span class="badge badge-green !text-[8px]">${h}</span>`).join('')}</div></td>
+                    <td class="p-6"><span class="badge badge-purple">${d.insurance}</span></td>
+                    <td class="p-6 text-right"><button onclick="scheduleData.splice(${i},1);renderScheduleGrid();" class="text-red-400 hover:text-red-600 transition p-2"><i class="fas fa-trash"></i></button></td>
+                </tr>`).join('');
+        }
+
+        function toggleDrafts() { document.getElementById('draftsSidebar').classList.toggle('open'); fetchDrafts(); }
+        
+        async function fetchDrafts() {
+            const res = await fetch(`${API}/drafts`);
+            const drafts = await res.json();
+            const list = document.getElementById('draftsList');
+            list.innerHTML = drafts.map(d => {
+                let timeLabel = 'Just now';
+                if (d.updatedAt || d.createdAt) {
+                    const ts = new Date(d.updatedAt || d.createdAt);
+                    if (!isNaN(ts.getTime())) timeLabel = ts.toLocaleDateString();
+                }
+                let targetDate = 'No Date';
+                if (d.date && d.date !== 'undefined') targetDate = d.date;
+
+                return `
+                <div class="draft-item ${state.currentDraftId === d._id ? 'active' : ''}" onclick="loadDraft('${d._id}')">
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="font-bold text-xs text-slate-800 truncate w-32">${d.name || 'Untitled'}</span>
+                        <div class="flex gap-2">
+                            <span class="badge badge-reco !text-[8px]">DRAFT</span>
+                            <button onclick="deleteDraft(event, '${d._id}')" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button>
+                        </div>
+                    </div>
+                    <div class="text-[10px] font-bold text-purple-600 mb-1">Target: ${targetDate}</div>
+                    <div class="text-[9px] text-slate-400 font-medium">Last Edit: ${timeLabel}</div>
+                    <div class="flex gap-2 mt-2">
+                        <span class="badge bg-white border border-slate-200 text-slate-500 !text-[9px]">${d.count} Leads</span>
+                        <span class="badge bg-white border border-slate-200 text-slate-500 !text-[9px] truncate max-w-[80px]">${d.physician || '--'}</span>
+                    </div>
+                </div>`;
+            }).join('') || '<div class="text-center text-slate-400 text-xs mt-10">No saved drafts</div>';
+        }
+
+        function scrapeGridData() {
+            const rows = document.querySelectorAll('#schedule-grid-body tr');
+            return scheduleData.map((d, i) => {
+                const row = rows[i]; if (!row) return d;
+                return {
+                    ...d,
+                    dx: document.getElementById(`dx-${i}`).value,
+                    hx: document.getElementById(`hx-${i}`).value,
+                    rx: document.getElementById(`rx-${i}`).value,
+                    qual: Array.from(row.querySelectorAll('input[data-type="qual"]:checked')).map(c=>c.value),
+                    reco: Array.from(row.querySelectorAll('input[data-type="reco"]:checked')).map(c=>c.value)
+                };
+            });
+        }
+
+        function saveDraft() {
+            if(!scheduleData.length) return showMsg("Empty", "Nothing to save.");
+            const loc = document.getElementById('scheduleLocation').value || 'Unknown Loc';
+            const phy = document.getElementById('schedulePhysician').value || 'Unknown Phys';
+            const date = document.getElementById('scheduleDate').value || new Date().toISOString().split('T')[0];
+            const defaultName = `Schedule - ${loc} - ${date} - ${phy}`;
+            document.getElementById('draftNameInput').value = state.currentDraftName || defaultName;
+            document.getElementById('saveDraftModal').style.display = 'flex';
+        }
+
+        async function confirmSaveDraft() {
+            const name = document.getElementById('draftNameInput').value; if(!name) return;
+            document.getElementById('saveDraftModal').style.display = 'none';
+            const currentData = scrapeGridData();
+            const payload = { name, location: document.getElementById('scheduleLocation').value, physician: document.getElementById('schedulePhysician').value, date: document.getElementById('scheduleDate').value, entries: currentData };
+            const method = state.currentDraftId ? 'PUT' : 'POST';
+            const url = state.currentDraftId ? `${API}/drafts/${state.currentDraftId}` : `${API}/drafts`;
+            
+            const res = await fetch(url, { method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+            const data = await res.json();
+            
+            if (method === 'POST' && data.id) {
+                state.currentDraftId = data.id;
+            }
+
+            state.currentDraftName = name;
+            document.getElementById('saveDraftBtn').innerText = "Update Draft";
+            document.getElementById('draftStatusText').innerText = `Editing: ${name}`;
+            fetchDrafts(); showMsg(state.currentDraftId ? "Updated" : "Saved", "Draft saved successfully.");
+        }
+
+        async function loadDraft(id) {
+            const res = await fetch(`${API}/drafts/${id}`); const draft = await res.json();
+            state.currentDraftId = draft._id; state.currentDraftName = draft.name; scheduleData = draft.entries;
+            document.getElementById('scheduleLocation').value = draft.location || '';
+            document.getElementById('schedulePhysician').value = draft.physician || '';
+            document.getElementById('scheduleDate').value = draft.date || '';
+            renderScheduleGrid();
+            document.getElementById('saveDraftBtn').innerText = "Update Draft";
+            document.getElementById('draftStatusText').innerText = `Editing: ${draft.name}`;
+            showMsg("Loaded", `Draft "${draft.name}" loaded for editing.`);
+        }
+
+        async function deleteDraft(e, id) {
+            e.stopPropagation(); if(!confirm("Delete this saved schedule?")) return;
+            await fetch(`${API}/drafts/${id}`, { method:'DELETE' });
+            if(state.currentDraftId === id) clearScheduleGrid();
+            fetchDrafts();
+        }
+
+        function downloadCSV() {
+            if(!scheduleData.length) return showMsg("Empty", "No data to export.");
+            const currentData = scrapeGridData();
+            let csvContent = "data:text/csv;charset=utf-8,Time,Chart Number,Patient Name,Age,Gender,Insurance,Dx,Hx,Rx,Qualifying Tests,Recommended Screenings,Clinical History\n";
+            currentData.forEach(row => {
+                const clean = (txt) => `"${(txt || '').toString().replace(/"/g, '""')}"`;
+                csvContent += [clean(row.time),clean(row.chart),clean(row.name),clean(row.age),clean(row.sex),clean(row.insurance),clean(row.dx),clean(row.hx),clean(row.rx),clean(row.qual.join(', ')),clean(row.reco.join(', ')),clean(row.history.join('; '))].join(",") + "\r\n";
+            });
+            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", `Schedule_Export_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }
+
+        function finalizeScheduleBatch() {
+            const date = document.getElementById('scheduleDate').value;
+            if(!date) return showMsg("Missing Data", "Please select a date for this schedule.");
+            if(!scheduleData.length) return showMsg("Empty", "No patient data to upload.");
+            document.getElementById('finalizeModal').style.display = 'flex';
+        }
+
+        async function executeFinalize() {
+            document.getElementById('finalizeModal').style.display = 'none';
+            try {
+                const date = document.getElementById('scheduleDate').value;
+                document.getElementById('finalizeBatchBtn').disabled = true; 
+                document.getElementById('finalizeBatchBtn').innerText = "Processing...";
+                
+                const currentData = scrapeGridData();
+                const entries = currentData.map(d => ({ time: d.time, chartNumber: d.chart, patientName: d.name, insurance: d.insurance, dx: d.dx, hx: d.hx, rx: d.rx, qualifyingTests: d.qual.join(','), recommendedScreenings: d.reco.join(',') }));
+                const response = await fetch(`${API}/schedules/batch`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ location: document.getElementById('scheduleLocation').value, physician: document.getElementById('schedulePhysician').value, date, entries }) });
+                if (!response.ok) throw new Error("Server communication error.");
+                
+                showMsg("Export Success", "Batch processed into pool. Data retained for export."); 
+                
+                if (state.currentDraftId) {
+                    await fetch(`${API}/drafts/${state.currentDraftId}`, { method: 'DELETE' });
+                }
+                
+                state.currentDraftId = null;
+                document.getElementById('saveDraftBtn').innerText = "Save Copy";
+                document.getElementById('draftStatusText').innerText = "Batch Finalized";
+                
+                fetchDrafts();
+                stats();
+            } catch (err) { 
+                showMsg("Connection Error", "Failed to connect to backend."); 
+            } finally { 
+                const btn = document.getElementById('finalizeBatchBtn'); 
+                btn.disabled = false; 
+                btn.innerText = "Finalize to Pool"; 
+            }
+        }
+
+        async function fetchCalls(p = 1, isW = false) {
+            state.currentPage = p;
+            const limit = isW ? 500 : (document.getElementById('poolLimit')?.value || 10);
+            const staffStr = encodeURIComponent(getSession()?.name || '');
+            const searchStr = encodeURIComponent(state.lastSearch || '');
+            
+            const url = `${API}/calls?page=${p}&limit=${limit}&type=${isW?'workspace':'master'}&search=${searchStr}&staff=${staffStr}`;
+            const res = await (await fetch(url)).json();
+            
+            const container = document.getElementById(isW ? 'workspace-table' : 'call-list-table');
+            
+            if (isW) {
+                const s = getSession(); 
+                state.activeTasks = res.tasks.filter(t => t.assignedTo === s?.name);
+                renderTable(state.activeTasks, container, true);
+                document.getElementById('sessionProgressBadge').innerText = `${state.activeTasks.filter(t=>t.addressed).length} / ${state.activeTasks.length}`;
+            } else {
+                renderTable(res.tasks, container, false); 
+                renderPagination(res.totalPages, isW);
+            }
+        }
+
+        // --- NEW SMART IDENTITY SYNC FUNCTION ---
+        async function syncIdentities(btn) {
+            try {
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
+                btn.disabled = true;
+
+                const res = await fetch(`${API}/calls/sync-identities`, { method: 'POST' });
+                const data = await res.json();
+                
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+
+                if (data.success) {
+                    showMsg("Identities Synced", `Successfully matched and updated ${data.updatedCount} unknown identity cases!`);
+                    fetchCalls(1, false); // Refresh the master pool
+                } else {
+                    showMsg("Sync Error", "Could not process the identity sync.");
+                }
+            } catch(e) {
+                showMsg("Network Error", "Failed to reach the server.");
+            }
+        }
+
+        function renderPagination(total, isW) {
+            const container = document.getElementById(isW ? 'workspacePagination' : 'masterPagination');
+            if(container) container.innerHTML = `<div class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Page ${state.currentPage} of ${total}</div><div class="flex gap-2"><button onclick="fetchCalls(1, ${isW})" class="pagination-btn-new" ${state.currentPage===1?'disabled':''}><i class="fas fa-angle-double-left"></i></button><button onclick="fetchCalls(${state.currentPage-1}, ${isW})" class="pagination-btn-new" ${state.currentPage===1?'disabled':''}><i class="fas fa-angle-left"></i></button><button onclick="fetchCalls(${state.currentPage+1}, ${isW})" class="pagination-btn-new" ${state.currentPage===total?'disabled':''}><i class="fas fa-angle-right"></i></button><button onclick="fetchCalls(${total}, ${isW})" class="pagination-btn-new" ${state.currentPage===total?'disabled':''}><i class="fas fa-angle-double-right"></i></button></div>`;
+        }
+
+        // SMART REVERSE / EDIT MODE LOGIC FOR ADDRESSED ROWS
+        function renderTable(data, container, isW) {
+            if(!data.length) { container.innerHTML = `<div class="p-32 text-center text-slate-300 font-black italic tracking-tighter text-3xl">No records discovered in pool</div>`; return; }
+            container.innerHTML = data.map((t, i) => `
+                <div class="p-8 border-b flex items-center justify-between transition ${t.addressed ? 'opacity-70 bg-slate-100 grayscale-[0.5]' : 'hover:bg-slate-50'}">
+                    <div class="w-72 shrink-0">
+                        <div class="text-2xl font-black text-slate-800 tracking-tighter leading-tight">${t.patientName}</div>
+                        <div class="text-[11px] font-bold text-slate-500 uppercase mt-0.5 tracking-wide">${calculateAge(t.patientId?.dob) || t.patientId?.age || '--'} ${t.patientId?.gender || ''}</div>
+                        <div class="flex items-center gap-2 mt-1"><span class="text-[9px] font-black text-purple-600 uppercase tracking-widest">${t.patientId?.insurance || 'Self Payer'}</span></div>
+                        <div class="text-[10px] font-black text-slate-400 mt-1">Chart #${t.chartNumber}</div>
+                    </div>
+                    <div class="flex-1 grid grid-cols-2 gap-10">
+                        <div class="space-y-4">
+                            <div><div class="report-label !mb-1">Qualified Tests</div><div class="flex flex-wrap gap-1">${(t.qualifyingTests||'').split(',').map(tx => tx ? `<span class="badge badge-brainview">${tx}</span>` : '').join('')}</div></div>
+                            <div><div class="report-label !mb-1">Recommended</div><div class="flex flex-wrap gap-1">${(t.recommendedScreenings||'').split(',').map(tx => tx ? `<span class="badge badge-reco">${tx}</span>` : '').join('') || '<span class="text-[8px] font-black text-slate-300 uppercase tracking-widest">No extra recommendations</span>'}</div></div>
+                        </div>
+                        <div class="flex gap-10">
+                            <div><div class="report-label">Reference</div><div class="text-[10px] font-black uppercase text-slate-600">${t.location}</div></div>
+                            <div><div class="report-label">Daily Attempts</div><div class="text-[10px] font-black ${t.attemptCount > 0 && !t.addressed ? 'text-red-500':'text-slate-400'} tracking-widest">${t.attemptCount}</div></div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 shrink-0">
+                        <button onclick="previewPatient('${t.chartNumber}', '${t._id}')" class="w-14 h-14 bg-slate-200 rounded-2xl flex items-center justify-center text-slate-500 hover:bg-slate-300 transition shadow-sm"><i class="fas fa-eye text-lg"></i></button>
+                        ${isW ? (
+                            t.addressed ? (
+                                t.lastOutcome === 'Scheduled' 
+                                ? `<button onclick="editScheduled(${i})" class="px-6 h-14 bg-blue-100 text-blue-700 rounded-2xl font-black uppercase text-[10px] shadow-sm hover:bg-blue-200 transition">View / Edit</button>`
+                                : `<button onclick="undoOutcome('${t._id}')" class="px-6 h-14 bg-red-100 text-red-700 rounded-2xl font-black uppercase text-[10px] shadow-sm hover:bg-red-200 transition"><i class="fas fa-undo mr-2"></i> Undo</button>`
+                            ) : `<button onclick="initInteraction(${i})" class="w-14 h-14 bg-purple-700 text-white rounded-2xl shadow-lg hover:scale-105 transition"><i class="fas fa-phone-alt text-lg"></i></button>`
+                        ) : `<button onclick="claimPatient('${t._id}')" class="px-8 h-14 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px] shadow-lg hover:bg-black transition">Claim</button>`}
+                    </div>
+                </div>`).join('');
+        }
+
+        // --- NEW UNDO / RE-OPEN LOGIC ---
+        async function undoOutcome(taskId) {
+            if(!confirm("Re-open this patient file and return them to your active workspace? This will erase the previous outcome.")) return;
+            const s = getSession();
+            
+            await fetch(`${API}/calls/undo`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ taskId, staff: s.name })
+            });
+            
+            fetchCalls(1, true); // Refresh workspace to un-grey the box
+        }
+
+        // --- NEW EDIT MODE FOR SCHEDULED PATIENTS ---
+        async function editScheduled(idx) {
+            await initInteraction(idx);
+            
+            const headerArea = document.getElementById('callPatientName').parentElement;
+            if(!document.getElementById('editBanner')) {
+                const banner = document.createElement('div');
+                banner.id = 'editBanner';
+                banner.className = 'mt-4 bg-blue-50 text-blue-700 p-3 rounded-xl text-xs font-black uppercase tracking-widest border border-blue-200 flex items-center gap-2 shadow-sm';
+                banner.innerHTML = '<i class="fas fa-shield-alt"></i> Patient is Scheduled. Appointments are safe. You are in Additive Edit Mode.';
+                headerArea.appendChild(banner);
+            }
+        }
+
+        async function previewPatient(chart, taskId) {
+            const d = await (await fetch(`${API}/patients/view?chartNumber=${chart}`)).json();
+            const modal = document.getElementById('viewModal'); if(!modal) return;
+            document.getElementById('viewPatientName').innerText = d.patient?.patientName || "Profile Preview";
+            document.getElementById('viewPatientBadges').innerHTML = `<span class="badge ${d.patient?.isOptedOut ? 'badge-red' : 'badge-green'}">${d.patient?.isOptedOut ? 'DNC Flagged' : 'Channel Ready'}</span><span class="badge badge-purple">${d.patient?.insurance || 'Private'}</span>`;
+            const displayAge = calculateAge(d.patient?.dob) || d.patient?.age || '--';
+            document.getElementById('viewDemoProfile').innerHTML = `<div><label class="report-label">Identity</label><div class="font-bold text-slate-700">${d.patient?.dob || '--'} (${displayAge} yrs)</div></div><div><label class="report-label">Contact</label><div class="font-bold text-slate-700">${d.patient?.phone || '--'}</div></div><div><label class="report-label">Gender</label><div class="font-bold text-slate-700 uppercase tracking-widest">${d.patient?.gender || '--'}</div></div>`;
+            document.getElementById('viewHistoryList').innerHTML = d.history.map(h => `<div class="p-4 bg-white border rounded-2xl flex justify-between shadow-sm"><b>${h.procedure}</b><span class="text-slate-400 text-[10px] font-black">${new Date(h.dateOfService).toLocaleDateString()}</span></div>`).join('') || '<div class="p-10 text-center text-slate-300">No medical data discovered.</div>';
+            document.getElementById('viewTrailList').innerHTML = d.logs.map(l => `<div class="p-4 bg-white border rounded-xl shadow-sm"><div class="flex justify-between font-black uppercase text-[8px] text-purple-600"><span>${l.outcome}</span><span>${new Date(l.timestamp).toLocaleString()}</span></div><div class="text-[10px] font-bold mt-1 text-slate-500">${l.staff} via ${l.channel}</div></div>`).join('') || '<div class="p-10 text-center text-slate-300">No outreach trail.</div>';
+            document.getElementById('viewClaimBtn').onclick = () => claimPatient(taskId);
+            modal.style.display = 'flex';
+        }
+        const closeViewModal = () => { const modal = document.getElementById('viewModal'); if(modal) modal.style.display = 'none'; }
+        async function claimPatient(taskId) { const s = getSession(); if(!s) return openGenerator(); await fetch(`${API}/calls/claim`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({taskId, staff:s.name})}); closeViewModal(); switchView('workspace'); }
+        async function fetchModalHistory(p = 1) {
+            if(!state.activePatient) return; state.modalHistoryPage = p; const chart = state.activePatient.chartNumber; const d = await (await fetch(`${API}/patients/view?chartNumber=${chart}`)).json(); const logs = d.logs || [];
+            document.getElementById('engTrail').innerHTML = logs.map(l => `<div class="p-3 bg-white border rounded-2xl shadow-sm mb-2 text-[10px] font-bold text-slate-600"><div class="flex justify-between items-center border-b pb-1 mb-1"><span class="text-purple-600 uppercase tracking-tighter">${new Date(l.timestamp).toLocaleString()}</span><span class="bg-slate-50 px-2 py-0.5 rounded text-slate-400 uppercase">${l.staff}</span></div><div class="text-slate-800 uppercase tracking-widest mb-1">Result: ${l.outcome}</div>${l.messageContent ? `<div class="text-slate-400 italic font-medium">Notes: "${l.messageContent}"</div>` : ''}</div>`).join('') || '<div class="text-slate-300 text-center p-4">No History Found</div>';
+            const pages = Math.ceil(logs.length / 5) || 1;
+            document.getElementById('engHistoryPagination').innerHTML = Array.from({length: pages}, (_, i) => `<button onclick="fetchModalHistory(${i+1})" class="w-6 h-6 flex items-center justify-center rounded text-[8px] font-black uppercase ${state.modalHistoryPage === i+1 ? 'bg-purple-600 text-white shadow-lg' : 'bg-white border text-slate-400 hover:text-purple-600'} transition-all">${i+1}</button>`).join('');
+        }
+        
+        async function initInteraction(idx) {
+            // Remove edit banner if opening a fresh lead
+            const existingBanner = document.getElementById('editBanner');
+            if (existingBanner) existingBanner.remove();
+
+            const t = state.activeTasks[idx]; state.activePatient = t;
+            document.getElementById('callPatientName').innerText = t.patientName; document.getElementById('callPhoneBadge').innerText = t.patientId?.phone || 'No Contact Info'; document.getElementById('strikeBadge').innerText = `Daily Attempts: ${t.attemptCount}`;
+            const d = await (await fetch(`${API}/patients/view?chartNumber=${t.chartNumber}`)).json();
+            document.getElementById('engHistory').innerHTML = d.history.map(h => `<div class="flex justify-between border-b pb-1"><span>${h.procedure}</span><span class="text-slate-300 font-black">${new Date(h.dateOfService).toLocaleDateString()}</span></div>`).join('') || '<div class="text-slate-300">None</div>';
+            fetchModalHistory(1); renderModalProcedures('Tags'); isCallActive = false;
+            const btn = document.getElementById('callBtn'); if (btn) { btn.disabled = false; btn.querySelector('span').innerText = "Call via Ring Central"; btn.classList.add('bg-green-600', 'hover:bg-green-700'); btn.classList.remove('bg-red-600', 'hover:bg-red-700', 'bg-slate-400', 'pointer-events-none'); }
+            state.selectedOutcome = null; document.getElementById('callDialog').style.display = 'flex'; resetEngModal();
+        }
+
+        // MASTER CHECKLIST
+        function getCombinedProcedures() {
+            const t = state.activePatient;
+            if (!t) return [];
+            return [...new Set([
+                ...(t.qualifyingTests||'').split(','), 
+                ...(t.recommendedScreenings||'').split(',')
+            ])].map(p=>p.trim()).filter(Boolean);
+        }
+
+        function renderModalProcedures(mode) {
+            const procs = getCombinedProcedures();
+            const container = document.getElementById('procSelection');
+            if (mode === 'Scheduled') { 
+                container.innerHTML = procs.map((tx, pIdx) => `<div class="procedure-row shadow-sm transition-all duration-300" id="proc-row-${pIdx}"><div class="flex items-center gap-4"><input type="checkbox" class="custom-checkbox" id="proc-check-${pIdx}" onchange="toggleProcedureResolution(${pIdx}, '${tx}')"><label for="proc-check-${pIdx}" class="text-sm font-black uppercase tracking-tighter text-slate-700 cursor-pointer flex-1">${tx}</label></div><div id="sched-fields-${pIdx}" class="hidden mt-3 pt-3 border-t grid grid-cols-2 gap-4 fade-in"><div><label class="text-[8px] font-black text-purple-600 uppercase block mb-1">Scheduled Date</label><input type="date" class="form-input !py-2 !px-3 text-[10px]" id="date-${pIdx}"></div><div><label class="text-[8px] font-black text-purple-600 uppercase block mb-1">Scheduled Time</label><input type="time" class="form-input !py-2 !px-3 text-[10px]" id="time-${pIdx}"></div></div></div>`).join(''); 
+            } else { 
+                container.innerHTML = `<div class="flex flex-wrap gap-2">${procs.map(tx => `<span class="badge badge-brainview !px-4 !py-2 !text-xs !rounded-xl shadow-sm">${tx}</span>`).join('')}</div>`; 
+            }
+        }
+        function toggleProcedureResolution(idx, name) { const isChecked = document.getElementById(`proc-check-${idx}`).checked; const row = document.getElementById(`proc-row-${idx}`); const fields = document.getElementById(`sched-fields-${idx}`); if (isChecked) { row.classList.add('selected'); if (state.selectedOutcome === 'Scheduled') fields.classList.remove('hidden'); } else { row.classList.remove('selected'); fields.classList.add('hidden'); } }
+        function setOutcome(v) { state.selectedOutcome = v; document.querySelectorAll('.outcome-card').forEach(c => c.classList.remove('active')); document.getElementById('out-'+v.replace(/\s+/g, '').replace('/', '')).classList.add('active'); renderModalProcedures(v); document.getElementById('submitEngBtn').disabled = false; document.getElementById('submitEngBtn').classList.remove('opacity-30'); }
+        
+        async function submitEngagement() {
+            const s = getSession(); 
+            const checkedProcs = []; 
+            const procs = getCombinedProcedures();
+            
+            if (state.selectedOutcome === 'Scheduled') { 
+                procs.forEach((name, i) => { 
+                    if (document.getElementById(`proc-check-${i}`)?.checked) { 
+                        checkedProcs.push({ procedure: name, date: document.getElementById(`date-${i}`)?.value || null, time: document.getElementById(`time-${i}`)?.value || null }); 
+                    } 
+                }); 
+                if (checkedProcs.length === 0) return showMsg("Validation", "Please select at least one procedure to schedule.");
+            } else if (state.selectedOutcome === 'Declined') { 
+                checkedProcs.push(...procs.map(p => ({procedure: p}))); 
+            }
+
+            await fetch(`${API}/calls/log`, { 
+                method:'POST', headers:{'Content-Type':'application/json'}, 
+                body:JSON.stringify({ taskId: state.activePatient._id, patientName: state.activePatient.patientName, staff: s.name, outcome: state.selectedOutcome, scheduledTests: state.selectedOutcome === 'Scheduled' ? checkedProcs : [], declinedTests: state.selectedOutcome === 'Declined' ? checkedProcs : [], messageContent: document.getElementById('engNotes').value, duration: callSeconds })
+            });
+            
+            closeCallDialog(); 
+
+            // KEEP THEM CLICKABLE GAMIFICATION UPGRADE
+            if (state.selectedOutcome !== 'Callback') {
+                const idx = state.activeTasks.findIndex(t => t._id === state.activePatient._id);
+                if (idx > -1) {
+                    state.activeTasks[idx].lastOutcome = state.selectedOutcome; // Track for Undo button
+                    
+                    const isTerminal = ['Scheduled', 'Declined', 'DNC', 'Wrong Number', 'Skip', 'Spanish Handoff'].includes(state.selectedOutcome);
+                    
+                    if (isTerminal) {
+                        state.activeTasks[idx].addressed = true; // Instantly greys out and locks
+                    } else if (['Left VM', 'No Answer'].includes(state.selectedOutcome)) {
+                        // Infinite Daily Loop: Just increment count, leave fully clickable until session closed
+                        state.activeTasks[idx].attemptCount = (state.activeTasks[idx].attemptCount || 0) + 1;
+                    }
+                }
+            }
+
+            const activeViewId = document.querySelector('main > div:not(.hidden)').id;
+            if (activeViewId === 'view-workspace') {
+                renderTable(state.activeTasks, document.getElementById('workspace-table'), true);
+                document.getElementById('sessionProgressBadge').innerText = `${state.activeTasks.filter(t=>t.addressed).length} / ${state.activeTasks.length}`;
+            } else {
+                fetchCalls(1, false);
+            }
+            
+            stats();
+        }
+
+        // APPOINTMENTS ENGINE
+        async function fetchAppointments() {
+            const searchStr = encodeURIComponent(state.lastSearch || '');
+            const res = await fetch(`${API}/appointments?search=${searchStr}`);
+            const appts = await res.json();
+            const body = document.getElementById('appointments-table-body');
+            body.innerHTML = appts.map(a => `
+                <tr class="border-b hover:bg-slate-50 transition">
+                    <td class="p-6"><div class="font-black text-purple-700">${a.date || '--'}</div><div class="text-[10px] font-bold text-slate-400 uppercase">${a.time || '--'}</div></td>
+                    <td class="p-6"><div class="font-bold text-slate-800">${a.patientName}</div><div class="text-[10px] font-black text-slate-400 uppercase">#${a.chartNumber}</div></td>
+                    <td class="p-6"><span class="badge badge-reco">${a.procedure}</span></td>
+                    <td class="p-6 text-[10px] font-bold text-slate-600 uppercase">${a.location || '--'}</td>
+                    <td class="p-6 text-right w-64">
+                        <button onclick="handleApptAction('${a._id}', 'complete', '${a.procedure}')" class="px-4 py-2 bg-green-50 text-green-600 rounded-xl text-[10px] font-black uppercase hover:bg-green-100 transition mr-2"><i class="fas fa-check"></i> Done</button>
+                        <button onclick="handleApptAction('${a._id}', 'noshow', '${a.procedure}')" class="px-4 py-2 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase hover:bg-red-100 transition"><i class="fas fa-ban"></i> No-Show</button>
+                    </td>
+                </tr>
+            `).join('') || `<tr><td colspan="5" class="p-20 text-center text-slate-300 font-black italic tracking-tighter text-2xl">No upcoming appointments</td></tr>`;
+        }
+
+        async function handleApptAction(id, action, procName) {
+            const msg = action === 'noshow' ? `Mark ${procName} as No-Show and return patient to the calling pool?` : `Mark ${procName} as Completed and save to medical history?`;
+            if(!confirm(msg)) return;
+            await fetch(`${API}/appointments/${id}/${action}`, { method: 'POST' });
+            showMsg("Success", action === 'noshow' ? "Patient returned to master pool." : "Procedure logged to patient history.");
+            fetchAppointments(); stats();
+        }
+
+        function renderAdminLogPagination() {
+            const container = document.getElementById('adminLogPagination'); if(!container) return;
+            container.innerHTML = `<div class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Page ${state.adminLogPage} of ${state.adminLogTotalPages}</div><div class="flex gap-2"><button onclick="triggerAdminSync(1)" class="pagination-btn-new" ${state.adminLogPage === 1 ? 'disabled' : ''}><i class="fas fa-angle-double-left"></i></button><button onclick="triggerAdminSync(${state.adminLogPage - 1})" class="pagination-btn-new" ${state.adminLogPage === 1 ? 'disabled' : ''}><i class="fas fa-angle-left"></i></button><button onclick="triggerAdminSync(${state.adminLogPage + 1})" class="pagination-btn-new" ${state.adminLogPage === state.adminLogTotalPages ? 'disabled' : ''}><i class="fas fa-angle-right"></i></button><button onclick="triggerAdminSync(${state.adminLogTotalPages})" class="pagination-btn-new" ${state.adminLogPage === state.adminLogTotalPages ? 'disabled' : ''}><i class="fas fa-angle-double-right"></i></button></div>`;
+        }
+        
+        // --- NEW LIVE AGENT MONITOR SYSTEM ---
+        async function fetchAdminWorkspaces() {
+            const res = await fetch(`${API}/admin/workspaces`);
+            const data = await res.json();
+            const container = document.getElementById('admin-workspaces-container');
+            
+            if (Object.keys(data).length === 0) {
+                container.innerHTML = `<div class="col-span-2 p-10 text-center text-slate-400 font-black uppercase tracking-widest border-2 border-dashed border-slate-200 rounded-[30px]">No active sessions currently on the floor</div>`;
+                return;
+            }
+
+            let html = '';
+            for (const [staff, tasks] of Object.entries(data)) {
+                html += `
+                <div class="bg-white border rounded-[30px] p-6 shadow-sm flex flex-col h-[400px]">
+                    <div class="flex justify-between items-center mb-6 border-b pb-4 shrink-0">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center font-black text-xl shadow-inner">${staff.charAt(0).toUpperCase()}</div>
+                            <div>
+                                <h5 class="font-black text-lg text-slate-800 uppercase tracking-tighter">${staff}'s Desk</h5>
+                                <div class="text-[10px] font-bold text-slate-400 tracking-widest uppercase"><span class="w-2 h-2 inline-block bg-green-500 rounded-full mr-1 animate-pulse"></span>${tasks.length} Active Leads</div>
+                            </div>
+                        </div>
+                        <button onclick="forceReleaseDesk('${staff}')" class="px-4 py-2 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase hover:bg-red-100 transition"><i class="fas fa-eject mr-1"></i> Force Release</button>
+                    </div>
+                    <div class="space-y-2 overflow-y-auto flex-1 pr-2">
+                        ${tasks.map(t => `
+                            <div class="p-3 border rounded-xl flex justify-between items-center text-xs bg-slate-50 hover:bg-white hover:shadow-sm transition">
+                                <div>
+                                    <div class="font-bold text-slate-700 truncate w-48">${t.patientName}</div>
+                                    <div class="text-[9px] text-slate-400 font-black uppercase mt-0.5 tracking-widest">Attempts: <span class="${t.attemptCount > 0 ? 'text-red-500' : ''}">${t.attemptCount}</span> | ${t.lastOutcome || 'Uncalled'}</div>
+                                </div>
+                                <span class="badge badge-brainview !text-[8px] truncate max-w-[80px]">${(t.qualifyingTests || 'Pending').split(',')[0]}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        async function forceReleaseDesk(staff) {
+            if(!confirm(`Force release all active leads from ${staff}'s desk back to the Master Pool?`)) return;
+            await fetch(`${API}/admin/workspaces/release`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({staff}) });
+            showMsg("Session Cleared", `${staff}'s desk has been wiped and leads returned to pool.`);
+            fetchAdminWorkspaces();
+        }
+
+        async function triggerAdminSync(p = 1) {
+            const startDate = document.getElementById('filterStartDate').value;
+            const endDate = document.getElementById('filterEndDate').value;
+            const staffFilter = document.getElementById('filterTeamMember').value;
+            const search = document.getElementById('logSearch').value || state.lastSearch || ""; const limit = document.getElementById('logLimit').value || 10;
+            const icon = document.getElementById('syncIcon'); if(icon) icon.classList.add('animate-spin-custom');
+            
+            fetchAdminWorkspaces(); // Sync the new live monitor
+
+            const url = `${API}/logs?page=${p}&limit=${limit}&staff=${staffFilter}&search=${encodeURIComponent(search)}${startDate ? '&startDate='+startDate : ''}${endDate ? '&endDate='+endDate : ''}`;
+            const d = await (await fetch(url)).json();
+            const s = await (await fetch(`${API}/stats`)).json();
+            state.adminLogPage = p; state.adminLogTotalPages = d.totalPages || 1;
+            document.getElementById('admin-scheduled-rate').innerText = s.successRate + "%"; document.getElementById('admin-total-calls').innerText = s.totalOutreaches;
+            const logs = d.logs || []; const totalSecs = logs.reduce((a, b) => a + (b.duration || 0), 0);
+            document.getElementById('admin-total-hours').innerText = (totalSecs/3600).toFixed(1); document.getElementById('admin-avg-duration').innerText = logs.length ? `${Math.floor((totalSecs/logs.length)/60)}:${String(Math.round((totalSecs/logs.length)%60)).padStart(2,'0')}` : '0:00';
+            document.getElementById('admin-log-table').innerHTML = logs.map(l => `<tr class="border-b hover:bg-slate-50 transition"><td class="p-6 text-slate-400 font-mono text-[10px] uppercase">${new Date(l.timestamp).toLocaleString()}</td><td class="p-6 font-bold text-slate-700">${l.staff}</td><td class="p-6 text-slate-500 font-bold">${l.patientName}</td><td class="p-6"><span class="badge bg-slate-100">${l.outcome}</span></td><td class="p-6 text-right font-mono text-[10px]">${Math.floor(l.duration/60)}:${String(l.duration%60).padStart(2,'0')}</td></tr>`).join('');
+            renderAdminLogPagination(); renderCharts(logs); if(icon) setTimeout(() => icon.classList.remove('animate-spin-custom'), 800);
+        }
+
+        async function exportAdminLogs(event) {
+            const startDate = document.getElementById('filterStartDate').value;
+            const endDate = document.getElementById('filterEndDate').value;
+            const staffFilter = document.getElementById('filterTeamMember').value;
+            const search = document.getElementById('logSearch').value || state.lastSearch || "";
+
+            const btn = event.currentTarget;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Processing...`;
+            btn.disabled = true;
+
+            const url = `${API}/logs?limit=all&staff=${staffFilter}&search=${encodeURIComponent(search)}${startDate ? '&startDate='+startDate : ''}${endDate ? '&endDate='+endDate : ''}`;
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                const logs = data.logs || [];
+
+                if (logs.length === 0) {
+                    showMsg("Empty Export", "No records found for the selected filters.");
+                    return;
+                }
+
+                let csvContent = "data:text/csv;charset=utf-8,Date & Time,Team Member,Patient Name,Outcome,Duration (seconds),Channel,Notes\n";
+                logs.forEach(l => {
+                    const clean = (txt) => `"${(txt || '').toString().replace(/"/g, '""')}"`;
+                    const dt = new Date(l.timestamp).toLocaleString();
+                    csvContent += [clean(dt), clean(l.staff), clean(l.patientName), clean(l.outcome), l.duration, clean(l.channel), clean(l.messageContent)].join(",") + "\r\n";
+                });
+
+                const link = document.createElement("a");
+                link.setAttribute("href", encodeURI(csvContent));
+                link.setAttribute("download", `Plexus_Report_${new Date().toISOString().slice(0,10)}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch(e) {
+                showMsg("Export Error", "Failed to generate report.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function renderCharts(logs) {
+            const outEl = document.getElementById('outcomeChart'), staffEl = document.getElementById('staffChart'); if(state.charts.out) state.charts.out.destroy(); if(state.charts.staff) state.charts.staff.destroy();
+            const counts = { Scheduled: 0, 'Left VM': 0, Declined: 0, Callback: 0, Skip: 0, 'No Answer': 0, Other: 0 }; logs.forEach(l => counts[l.outcome] !== undefined ? counts[l.outcome]++ : counts.Other++);
+            state.charts.out = new Chart(outEl, { type: 'doughnut', data: { labels: Object.keys(counts), datasets: [{ data: Object.values(counts), backgroundColor: ['#7e22ce', '#a855f7', '#d8b4fe', '#f3e8ff', '#94a3b8', '#64748b', '#6d28d9'], borderWidth: 0 }] }, options: { maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right', labels: { font: { size: 9, weight: 'bold' } } } } } });
+            const teamMap = {}; logs.forEach(l => teamMap[l.staff] = (teamMap[l.staff] || 0) + 1);
+            state.charts.staff = new Chart(staffEl, { type: 'bar', data: { labels: Object.keys(teamMap), datasets: [{ label: 'Contributions', data: Object.values(teamMap), backgroundColor: '#7e22ce', borderRadius: 10 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } });
+        }
+        function toggleCall() {
+            const phone = state.activePatient.patientId?.phone; if (!phone) return showMsg("Missing Data", "No phone number available."); const btn = document.getElementById('callBtn'); const span = btn.querySelector('span'); const cleanPhone = phone.replace(/[^0-9]/g, '');
+            if (!isCallActive) { window.location.href = `tel:${cleanPhone}`; isCallActive = true; span.innerText = "End Call"; btn.classList.remove('bg-green-600', 'hover:bg-green-700'); btn.classList.add('bg-red-600', 'hover:bg-red-700'); callSeconds = 0; if(callTimer) clearInterval(callTimer); callTimer = setInterval(() => { callSeconds++; const timerEl = document.getElementById('callTimer'); if (timerEl) timerEl.innerText = `Interaction: ${Math.floor(callSeconds/60)}:${String(callSeconds%60).padStart(2,'0')}`; }, 1000); } else { isCallActive = false; span.innerText = "Call Ended"; btn.disabled = true; btn.classList.remove('bg-red-600', 'hover:bg-red-700'); btn.classList.add('bg-slate-400', 'pointer-events-none'); if(callTimer) clearInterval(callTimer); const timerEl = document.getElementById('callTimer'); if (timerEl) timerEl.innerText = `Completed: ${Math.floor(callSeconds/60)}:${String(callSeconds%60).padStart(2,'0')}`; }
+        }
+        function openSmsModal() { document.getElementById('smsModal').style.display = 'flex'; }
+        function openEmailModal() { document.getElementById('emailModal').style.display = 'flex'; }
+        function applyTemplate(type, content) { if(content) document.getElementById(type+'Body').value = content.replace('[Patient]', state.activePatient.patientName).replace('[Staff]', getSession().name); }
+        async function confirmSms() { const body = document.getElementById('smsBody').value; await fetch(`${API}/calls/log`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ taskId: state.activePatient._id, patientName: state.activePatient.patientName, staff: getSession().name, outcome: 'SMS Sent', channel: 'SMS', messageContent: body })}); document.getElementById('smsModal').style.display = 'none'; initInteraction(state.activeTasks.findIndex(t=>t._id === state.activePatient._id)); }
+        async function confirmEmail() { const body = document.getElementById('emailBody').value; await fetch(`${API}/calls/log`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ taskId: state.activePatient._id, patientName: state.activePatient.patientName, staff: getSession().name, outcome: 'Email Sent', channel: 'Email', messageContent: body })}); document.getElementById('emailModal').style.display = 'none'; initInteraction(state.activeTasks.findIndex(t=>t._id === state.activePatient._id)); }
+        async function handleAdminAuth() { if(document.getElementById('admin-pass-input').value === 'admin') { isAdmin = true; document.getElementById('admin-menu-section').classList.remove('hidden'); document.getElementById('admin-login-btn').innerHTML = `<span>Logout Admin</span> <i class="fas fa-sign-out-alt"></i>`; document.getElementById('admin-login-btn').classList.remove('text-slate-400'); document.getElementById('admin-login-btn').classList.add('text-red-500'); closeAdminLogin(); switchView('admin-panel'); } }
+        function openAdminLogin() { if(isAdmin) { handleLogout(); } else { const el = document.getElementById('admin-login-overlay'); if(el) el.style.display = 'flex'; } }
+        function closeAdminLogin() { const el = document.getElementById('admin-login-overlay'); if(el) el.style.display = 'none'; }
+        function handleLogout() { isAdmin = false; document.getElementById('admin-menu-section').classList.add('hidden'); document.getElementById('admin-login-btn').innerHTML = `<span>Admin Settings</span> <i class="fas fa-chevron-right text-[8px]"></i>`; document.getElementById('admin-login-btn').classList.add('text-slate-400'); document.getElementById('admin-login-btn').classList.remove('text-red-500'); switchView('dashboard'); }
+        function openGenerator() { document.getElementById('generatorModal').style.display = 'flex'; }
+        function closeGenerator() { document.getElementById('generatorModal').style.display = 'none'; }
+        function runGeneration() { const staff = document.getElementById('genStaff').value, limit = document.getElementById('genLimit').value, type = document.getElementById('genType').value; fetch(`${API}/calls/allocate`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({staff, limit, type}) }).then(() => { localStorage.setItem('plexus_session', JSON.stringify({name: staff})); updateDashboardUI(); switchView('workspace'); closeGenerator(); }); }
+        function clearActiveSession() { if(confirm("End shift? Unhandled leads return to neutral pool.")) { fetch(`${API}/calls/release`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({staff: getSession().name})}).then(()=> { localStorage.clear(); location.reload(); }); } }
+        function updateDashboardUI() { const s = getSession(); if(s) { document.getElementById('activeStaffName').innerText = s.name; document.getElementById('dashStaffName').innerText = s.name; document.getElementById('sessionStatus').classList.remove('hidden'); document.getElementById('dashboardSessionLabel').classList.remove('hidden'); document.getElementById('nav-workspace').classList.remove('hidden'); document.getElementById('dashboardSubtext').classList.add('hidden'); document.getElementById('dashboardActions').innerHTML = `<button onclick="switchView('workspace')" class="btn-premium py-6 rounded-3xl w-full uppercase text-xs">Resume Outreach</button><button onclick="clearActiveSession()" class="w-full bg-red-50 text-red-600 py-4 rounded-2xl font-black mt-4 uppercase text-xs">Close Session</button>`; } else { document.getElementById('sessionStatus').classList.add('hidden'); document.getElementById('dashboardSessionLabel').classList.add('hidden'); document.getElementById('dashboardSubtext').classList.remove('hidden'); document.getElementById('dashboardActions').innerHTML = `<button onclick="openGenerator()" class="btn-premium py-6 rounded-3xl w-full uppercase text-xs shadow-xl">Allocate outreach batch</button>`; } }
+        function stats() { fetch(`${API}/stats`).then(r=>r.json()).then(s => { document.getElementById('stat-total').innerText = s.totalPatients; document.getElementById('stat-pending').innerText = s.pendingTasks; document.getElementById('stat-success').innerText = s.successRate + '%'; }); }
+        async function upload(type) { const fd = new FormData(); fd.append('file', document.getElementById(type+'File').files[0]); document.getElementById('progressContainer').classList.remove('hidden'); const poller = setInterval(async () => { const rs = await fetch(`${API}/upload/status`); const s = await rs.json(); if(s.active) { const p = Math.round((s.current / s.total) * 100); document.getElementById('progBar').style.width = p + '%'; document.getElementById('progText').innerText = `${s.current} / ${s.total} processed`; } }, 500); await fetch(`${API}/upload/${type}`, { method:'POST', body:fd }); clearInterval(poller); document.getElementById('progressContainer').classList.add('hidden'); showMsg("Success", `Data ingestion finished.`); stats(); }
+        function closeCallDialog() { document.getElementById('callDialog').style.display = 'none'; if(callTimer) clearInterval(callTimer); isCallActive = false; }
+        function resetEngModal() { document.querySelectorAll('.outcome-card').forEach(c => c.classList.remove('active')); document.getElementById('submitEngBtn').disabled = true; document.getElementById('submitEngBtn').classList.add('opacity-30'); }
+    </script>
+</body>
+</html>
