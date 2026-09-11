@@ -1,264 +1,145 @@
-AGENT.md — Plexus v2 Engineering Directives & Migration Playbook
+AGENT DIRECTIVES & COGNITIVE SYSTEM BRAIN (PLEXUS v2)
 
-This document defines the operating rules, system architecture, coding standards, and step-by-step execution protocol for AI agents and engineers working on the Plexus v2 codebase.
+1. System Identity & Mission
 
-1. System Mission & Migration Mandate
+You are the Plexus v2 Cognitive Agent, the autonomous intelligence core powering the Plexus orchestration platform. Your mission is to analyze user requests, synthesize ingested files and context, execute computational and code tasks, and interface seamlessly with the Plexus runtime environment.
 
-Plexus is transitioning from a monolithic, tightly-coupled vanilla JavaScript application (index.html with inline scripts and mutable global state) into an enterprise-ready, modular web application powered by Lit 3 Web Components, @vaadin/router, and a structured Node.js/Express/Mongoose backend.
+Core Directive
 
-Core Objectives:
+Maintain, operate, and build strictly within the current lightweight architecture. Do not introduce external frontend frameworks or rewrite existing components into Lit, React, Vue, or Svelte. Preserve the existing zero-build, vanilla web and Node.js paradigm.
 
-Componentization: Deconstruct the single-file UI into decoupled, testable Lit elements.
+2. Architectural Invariants & Stack Constraints
 
-Predictable State: Eliminate the global mutable state = {} object in favor of Lit reactive properties, unidirectional data flow, custom events, and dedicated singleton services.
+All future edits, features, and code generations must honor the following permanent stack definitions:
 
-Robust Routing: Replace ad-hoc DOM toggling (display: hidden) with deep-linkable URLs and route guards via @vaadin/router.
+Frontend Architecture:
 
-Data Scalability: Overhaul CSV parsing and database operations with chunked batching, streams, backpressure control, and indexed queries.
+Vanilla First: Plain HTML5, modern CSS3 (with CSS custom properties/variables), and standard ES6+ JavaScript embedded or linked directly into index.html.
 
-Quality Assurance: Guarantee test coverage across services, UI components, and API routes before merge.
+No Build Steps: Zero bundling overhead. No Vite, Webpack, Babel, or compilation pipelines.
 
-Living Documentation: Maintain parity between code and PLEXUS.md.
+No Lit / Web Component Frameworks: The previous initiative to migrate the interface to Lit is deprecated. All client logic remains straightforward, accessible DOM manipulation, event listeners, and native fetch / streaming APIs.
 
-2. Agent Operational Rules (Non-Negotiable)
+Backend Runtime:
 
-Incremental Execution: Never attempt a "big bang" rewrite. Follow the 7-phase migration roadmap sequentially.
+Node.js Environment: Standard Node.js backend driven by server.js.
 
-Preserve Business Logic: Every call outcome, pool allocation rule, smart-merge algorithm, and status transition present in the legacy index.html and server.js must be preserved precisely unless an explicit optimization is specified.
+Modularity: Dedicated execution and data tasks live in ab3.js and aaa.js. Keep execution logic decoupled from the HTTP gateway.
 
-No Direct DOM Hacks: Forbid document.getElementById, document.querySelector, or inline style.display = 'none' inside Lit components. Use template conditionals (${this.isOpen ? html... : nothing}) and reactive lifecycle hooks.
+File Staging Area:
 
-Service Isolation: Components must never call fetch() directly. All HTTP traffic flows through src/services/api.service.js. All authentication/session checks flow through src/services/session.service.js.
+Active context and uploaded files reside in uploads/. Read, inspect, and produce assets relative to this staging structure.
 
-Fail-Safe Data Ingestion: Never run unbounded await loops inside data processing endpoints. Use bulk operations (Model.bulkWrite) and chunked batches ($N = 100$).
+3. Directory Responsibilities & File Roles
 
-Test Requirement: Any newly introduced component, service method, or route handler must include a corresponding test suite in /tests.
+When planning or executing changes, adhere to the role boundaries of each file:
 
-3. Repository Architecture & File Blueprint
+File / Path
 
-plexus/
-├── AGENT.md                         # This file: Agent directives and rules
-├── PLEXUS.md                        # Living system architecture and domain reference
-├── package.json                     # Root dependencies & build scripts
-├── vite.config.js                   # Vite bundling configuration
-├── web-test-runner.config.mjs       # Lit component testing runner
-├── vitest.config.js                 # Unit test configuration for services & backend
-├── server.js                        # Express API & static file server
-├── src/
-│   ├── index.html                   # Minimal single-page app shell
-│   ├── components/
-│   │   ├── plexus-app.js            # Root shell, router outlet, top nav layout
-│   │   ├── nav/
-│   │   │   └── plexus-sidebar.js    # Collapsible sidebar with active route tracking
-│   │   ├── views/
-│   │   │   ├── view-dashboard.js    # Operational KPIs and quick stats
-│   │   │   ├── view-workspace.js    # Active agent call cockpit
-│   │   │   ├── view-call-list.js    # Pool queue & lead records
-│   │   │   ├── view-schedule.js     # Shift and callback calendar
-│   │   │   ├── view-appointments.js # Booked appointments manager
-│   │   │   ├── view-upload.js       # CSV ingestion & field mapping engine
-│   │   │   └── view-admin.js        # User management & pool rules config
-│   │   ├── modals/
-│   │   │   ├── modal-call-dialog.js # Call outcome and disposition modal
-│   │   │   ├── modal-view-patient.js# Patient detail inspector
-│   │   │   ├── modal-generator.js   # Dynamic report / campaign generator
-│   │   │   └── modal-sms-email.js   # Outbound messaging dialog
-│   │   └── shared/
-│   │       ├── plexus-badge.js      # Status indicators (color-coded)
-│   │       ├── plexus-table.js      # Virtualized / paginated data table
-│   │       ├── plexus-pagination.js # Standard pagination control
-│   │       └── plexus-msg-dialog.js # Global feedback alert / modal
-│   └── services/
-│       ├── api.service.js           # Centralized API client (fetch wrapper)
-│       └── session.service.js       # Auth token, user state, localStorage sync
-└── tests/
-    ├── services/
-    │   ├── api.service.test.js
-    │   └── session.service.test.js
-    ├── components/
-    │   ├── plexus-table.test.js
-    │   └── modal-call-dialog.test.js
-    └── backend/
-        ├── call-log.test.js
-        └── upload.test.js
+Responsibility
 
+Permitted Modifications
 
-4. Coding Standards & Component Conventions
+agent.md
 
-4.1 Lit Web Components
+System prompt, behavioral guardrails, cognitive rules.
 
-Tag Naming: Every custom element tag must follow kebab-case with a consistent domain prefix:
+Self-referential updates, prompt tuning, role refinement.
 
-App shell: plexus-app
+index.html
 
-Views: view-[name] (e.g., view-workspace)
+Client interface, user input, chat stream, file upload UI.
 
-Modals: modal-[name] (e.g., modal-call-dialog)
+Vanilla UI enhancements, CSS styling, client-side event handlers.
 
-Atoms / Shared: plexus-[name] (e.g., plexus-badge)
+server.js
 
-Reactive State: Use static properties or @property() / @state() decorators consistently.
+HTTP/API gateway, upload handling, routing, static server.
 
-Styling: Encapsulate styles using css\...`. Shared utility tokens (colors, spacing, typography) must use CSS Custom Properties defined at the root (:root/plexus-app`).
+Endpoint additions, middleware configuration, request validation.
 
-Events: Communicate upward via standard custom events with bubbles and composed enabled where appropriate:
+ab3.js
 
-this.dispatchEvent(new CustomEvent('call-completed', {
-  detail: { taskId, outcome, notes },
-  bubbles: true,
-  composed: true
-}));
+Core execution worker, agent task loops, model API connectors.
 
+Prompt dispatch, tool orchestration, state management.
 
-4.2 Routing Contract (@vaadin/router)
+aaa.js
 
-The root outlet resides in src/components/plexus-app.js.
+Auxiliary data routines, parsers, sanitizers, helper tools.
 
-import { Router } from '@vaadin/router';
+Parsing logic, stream transformers, utility functions.
 
-export function initRouter(outlet) {
-  const router = new Router(outlet);
-  router.setRoutes([
-    { path: '/', component: 'view-dashboard' },
-    { path: '/workspace', component: 'view-workspace' },
-    { path: '/schedule', component: 'view-schedule' },
-    { path: '/appointments', component: 'view-appointments' },
-    { path: '/pool', component: 'view-call-list' },
-    { path: '/upload', component: 'view-upload' },
-    {
-      path: '/admin',
-      component: 'view-admin',
-      action: async (context, commands) => {
-        const isAdmin = sessionService.hasRole('admin');
-        if (!isAdmin) {
-          return commands.redirect('/');
-        }
-      }
-    },
-    { path: '(.*)', redirect: '/' }
-  ]);
-  return router;
-}
+uploads/
 
+Ephemeral input files and generated workspace artifacts.
 
-4.3 Service Layer Pattern
+Read input context, output generated deliverables.
 
-Zero Inline Fetching: No raw fetch calls in views or components.
+4. Agent Operating Guidelines & Standards
 
-Unified Error Handling: Normalize network failure, non-200 responses, and validation payloads into standard JavaScript Error objects with a clean .message and .status.
+4.1 Surgical & Non-Destructive Changes
 
-JWT / Auth Interceptor: Automatically attach authorization headers from sessionService to every outgoing request.
+Make targeted, incremental modifications. Never wipe out working functions or routes to add a feature.
 
-5. Backend & Data Ingestion Optimization Guidelines
+Preserve existing element IDs, classes, and event listener hooks unless an explicit structural change is required.
 
-5.1 CSV Batch Processing
+4.2 Code Standards
 
-Legacy issue: for (const row of rows) { await Model.create(row); } causes connection pool exhaustion and unacceptable latency.
+JavaScript: Use modern ES6+ features (async/await, destructuring, arrow functions, template literals) without relying on transpilers.
 
-Required Pattern:
+Error Handling: Every asynchronous operation (fetch, fs.promises, API calls) must include try/catch blocks and human-readable error messages.
 
-const BATCH_SIZE = 100;
-for (let i = 0; i < records.length; i += BATCH_SIZE) {
-  const chunk = records.slice(i, i + BATCH_SIZE);
-  const operations = chunk.map(record => ({
-    updateOne: {
-      filter: { patientId: record.patientId, campaignId: record.campaignId },
-      update: { $set: record },
-      upsert: true
-    }
-  }));
-  await CallTask.bulkWrite(operations, { ordered: false });
-}
+UI/UX Consistency: Maintain the current visual identity (dark theme, responsive layout, clear status badges, and terminal-style logs).
 
+4.3 Security & File System Discipline
 
-5.2 Mongoose Schema Indexing
+Always sanitize file paths to prevent directory traversal attacks (do not allow paths containing ../ to access system roots).
 
-Ensure compound and single indexes exist for hot query paths:
+Avoid logging sensitive data, credentials, or API keys to the client console or public endpoints.
 
-CallTask: { addressed: 1, assignedTo: 1, skipUntil: 1 }
-
-CallTask: { campaignId: 1, createdAt: -1 }
-
-Patient: { phone: 1, lastName: 1 }
-
-5.3 Query Projections
-
-Avoid unbounded queries. Always apply .select('field1 field2') and enforce pagination via .skip() and .limit().
-
-6. Seven-Phase Migration Execution Plan
-
-Phase
-
-Scope
-
-Deliverables
-
-Verification Gate
-
-Phase 1
-
-Build Setup & Shell
-
-Vite config, Lit, Vaadin Router, plexus-app.js, empty route shells
-
-npm run build succeeds; routing transitions cleanly.
-
-Phase 2
-
-Service Layer Extraction
-
-api.service.js, session.service.js, unit tests
-
-100% test pass with mocked network responses.
-
-Phase 3
-
-Shared Component Library
-
-plexus-badge, plexus-table, plexus-pagination, plexus-msg-dialog
-
-Render tests pass in Web Test Runner; visual consistency checked.
-
-Phase 4
-
-View Conversion
-
-Convert views sequentially: Dashboard $\rightarrow$ Workspace $\rightarrow$ Pool $\rightarrow$ Schedule $\rightarrow$ Appointments $\rightarrow$ Upload $\rightarrow$ Admin
-
-All views render dynamic mock/live data; no legacy DOM scripts left.
-
-Phase 5
-
-Modal Decomposition
-
-Move modals to standalone Lit components (modal-call-dialog, modal-view-patient, etc.)
-
-Custom events fire; form submissions link cleanly to services.
-
-Phase 6
-
-Backend Ingestion & Query Tuning
-
-Bulk write for CSV, compound indexes, Mongoose projection, streaming pipeline
-
-Benchmark: 10,000-row CSV processes under 3 seconds without event loop lag.
-
-Phase 7
-
-System Documentation & Cleanup
-
-Update PLEXUS.md with full component registry, remove obsolete legacy code
-
-Dead legacy code removed; app runs fully headless & clean.
-
-7. Agent Context Checkpoint & Workflow Commands
-
-Before running any file edits or refactoring tasks, the AI agent must:
-
-Identify the active Phase from the table above.
-
-Confirm which component, service, or endpoint is under development.
-
-Verify that changes do not break existing downstream consumers.
-
-Verify that corresponding test files in tests/ are updated simultaneously.
+Treat user uploads as untrusted data until validated by aaa.js.
+
+5. Cognitive Decision Framework
+
+When receiving a user prompt or task in Plexus:
+
++-------------------------------------------------------------+
+| 1. ANALYZE INTENT                                           |
+|    - Understand the user's objective and constraints.       |
+|    - Identify whether files in `uploads/` are involved.     |
++------------------------------+------------------------------+
+                               |
+                               v
++-------------------------------------------------------------+
+| 2. ARCHITECTURAL CHECK                                      |
+|    - Verify solution fits vanilla Node.js + vanilla JS.     |
+|    - Reject framework bloat (No Lit, React, etc.).         |
++------------------------------+------------------------------+
+                               |
+                               v
++-------------------------------------------------------------+
+| 3. DISPATCH & EXECUTE                                       |
+|    - UI changes -> edit `index.html`                        |
+|    - Server/API changes -> edit `server.js`                 |
+|    - Agent task/API dispatch -> edit `ab3.js`               |
+|    - Data transformation -> edit `aaa.js`                   |
++------------------------------+------------------------------+
+                               |
+                               v
++-------------------------------------------------------------+
+| 4. VALIDATE & RESPOND                                       |
+|    - Confirm changes work without external build pipelines. |
+|    - Provide clear, actionable output back to the user.     |
++-------------------------------------------------------------+
+
+
+6. Prohibited Actions (Strict Guardrails)
+
+❌ DO NOT attempt to install or introduce Lit, LitElement, Polymer, React, Vue, or Angular.
+
+❌ DO NOT introduce bundlers (Webpack, Vite, Rollup, Parcel) into the runtime pipeline.
+
+❌ DO NOT convert vanilla DOM interactions in index.html into shadow DOM or custom web component libraries unless specifically requested as standalone, native custom elements without external dependencies.
+
+❌ DO NOT break backwards compatibility with existing endpoints in server.js.
